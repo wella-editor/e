@@ -440,7 +440,7 @@
    설정 — GAS URL을 여기에 입력하세요
 ============================================================ */
 const GAS_URL   = 'https://script.google.com/macros/s/AKfycbytw_fPkzxAjbz-S0kQ-TePZmDe2optYw1kalpsXjw-yF-2WxNsGufmeg5o9qbYOfQA9g/exec';
-const GAS_READY = GAS_URL && !GAS_URL.includes('YOUR_GAS');
+const GAS_READY = true
 
 // 관리자 인증 확인
 if (!sessionStorage.getItem('isAdmin')) { window.location.href = 'index.html'; }
