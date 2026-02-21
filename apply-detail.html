@@ -259,141 +259,241 @@
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
+
 <script>
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbytw_fPkzxAjbz-S0kQ-TePZmDe2optYw1kalpsXjw-yF-2WxNsGufmeg5o9qbYOfQA9g/exec';
-const urlParams = new URLSearchParams(window.location.search);
-const applyId = urlParams.get('id');
+/* ============================================================
+   설정
+============================================================ */
+const GAS_URL   = 'https://script.google.com/macros/s/AKfycbytw_fPkzxAjbz-S0kQ-TePZmDe2optYw1kalpsXjw-yF-2WxNsGufmeg5o9qbYOfQA9g/exec';
+const GAS_READY = true
+
+const urlParams   = new URLSearchParams(window.location.search);
+const applyId     = urlParams.get('id');
 const currentUser = JSON.parse(sessionStorage.getItem('applyUser') || 'null');
 
 if (!currentUser) { window.location.href = 'apply.html'; }
 
-let applyInfo = null;
-let allItems = [];
-let myApplied = new Set();
+/* ============================================================
+   상태 변수
+============================================================ */
+let applyInfo    = null;
+let allItems     = [];
+let myApplied    = new Set();
 let queueInterval = null;
 let pendingItemId = null;
+let queuePos      = 0;
+let totalInQueue  = 0;
+let activeUsers   = 0;
 
-// Mock data
-const mockData = {
-  1: {
-    id: 1, title: '2026 수강신청',
-    startDate: '2026-02-21 15:00', endDate: '2026-02-22 17:00',
-    maxPerUser: 5, allowedGroups: ['1학년','2학년','3학년'],
-    items: [
-      { id: 'A01', name: '통계학 A', current: 0, max: 25 },
-      { id: 'A02', name: '통계학 B', current: 23, max: 25 },
-      { id: 'A03', name: '경제학 A', current: 25, max: 25 },
-      { id: 'A04', name: '경제학 B', current: 12, max: 30 },
-      { id: 'A05', name: '철학 개론', current: 5, max: 20 },
-      { id: 'A06', name: '문학과 사회', current: 18, max: 20 },
-      { id: 'A07', name: '물리학 실험', current: 30, max: 30 },
-      { id: 'A08', name: '화학 개론', current: 8, max: 25 },
-    ]
-  }
+/* ============================================================
+   기본 Mock — GAS 미연결 시 항상 이걸 사용
+   (applyId 값과 무관하게 폴백으로 사용)
+============================================================ */
+const DEFAULT_MOCK = {
+  id: applyId,
+  title: '2026 수강신청',
+  startDate: '2026-02-21 15:00',
+  endDate:   '2026-02-22 17:00',
+  maxPerUser: 5,
+  allowedGroups: ['1학년', '2학년', '3학년'],
+  items: [
+    { id: 'A01', name: '통계학 A',    current: 0,  max: 25 },
+    { id: 'A02', name: '통계학 B',    current: 23, max: 25 },
+    { id: 'A03', name: '경제학 A',    current: 25, max: 25 },
+    { id: 'A04', name: '경제학 B',    current: 12, max: 30 },
+    { id: 'A05', name: '철학 개론',   current: 5,  max: 20 },
+    { id: 'A06', name: '문학과 사회', current: 18, max: 20 },
+    { id: 'A07', name: '물리학 실험', current: 30, max: 30 },
+    { id: 'A08', name: '화학 개론',   current: 8,  max: 25 }
+  ]
 };
 
+/* ============================================================
+   GAS 공통 호출
+============================================================ */
+async function gasCall(action, params = {}) {
+  const body = new URLSearchParams({ action, ...params });
+  const res  = await fetch(GAS_URL, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body:    body.toString()
+  });
+  return await res.json();
+}
+
+function parseField(val) {
+  if (!val || typeof val !== 'string') return val;
+  try { return JSON.parse(val); } catch { return val; }
+}
+
+/* ============================================================
+   초기화
+============================================================ */
 async function init() {
-  try {
-    const p = new URLSearchParams({ action: 'getApplyDetail', id: applyId, userId: currentUser.id });
-    const res = await fetch(GAS_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: p.toString() });
-    const data = await res.json();
-    applyInfo = data.apply;
-    myApplied = new Set(data.myApplied || []);
-  } catch(e) {
-    applyInfo = mockData[applyId] || mockData[1];
-    myApplied = new Set();
+
+  /* 1) GAS 연결 시도 */
+  if (GAS_READY) {
+    try {
+      const data = await gasCall('getApplyDetail', { id: applyId, userId: currentUser.id });
+      if (data && data.apply && data.apply.title) {
+        applyInfo = data.apply;
+        // GAS에서 JSON 문자열로 올 수 있는 필드 파싱
+        if (typeof applyInfo.items         === 'string') applyInfo.items         = parseField(applyInfo.items)         || [];
+        if (typeof applyInfo.allowedGroups === 'string') applyInfo.allowedGroups = parseField(applyInfo.allowedGroups) || [];
+        if (typeof applyInfo.groups        === 'string') applyInfo.allowedGroups = parseField(applyInfo.groups)        || [];
+        myApplied = new Set(data.myApplied || []);
+      }
+    } catch (e) {
+      console.warn('GAS fetch 실패:', e);
+    }
   }
 
+  /* 2) sessionStorage 캐시 (apply.html에서 저장한 목록) 확인 */
+  if (!applyInfo) {
+    try {
+      const raw = sessionStorage.getItem('applyList');
+      if (raw) {
+        const list = JSON.parse(raw);
+        const hit  = list.find(a => String(a.id) === String(applyId));
+        if (hit && hit.title) {
+          applyInfo = hit;
+          if (typeof applyInfo.items         === 'string') applyInfo.items         = parseField(applyInfo.items)         || [];
+          if (typeof applyInfo.allowedGroups === 'string') applyInfo.allowedGroups = parseField(applyInfo.allowedGroups) || [];
+          if (typeof applyInfo.groups        === 'string') applyInfo.allowedGroups = parseField(applyInfo.groups)        || [];
+        }
+      }
+    } catch (e) {}
+  }
+
+  /* 3) 최종 폴백 → DEFAULT_MOCK */
+  if (!applyInfo || !applyInfo.title) {
+    applyInfo = DEFAULT_MOCK;
+  }
+
+  /* ── 그룹 필드 정규화 (groups / allowedGroups 혼용 대응) */
+  if (!applyInfo.allowedGroups && applyInfo.groups) {
+    applyInfo.allowedGroups = Array.isArray(applyInfo.groups)
+      ? applyInfo.groups : parseField(applyInfo.groups) || [];
+  }
+  applyInfo.allowedGroups = applyInfo.allowedGroups || [];
+  applyInfo.items         = applyInfo.items         || [];
+
+  /* ── UI 렌더링 */
   document.getElementById('headerTitle').textContent = applyInfo.title;
-  document.getElementById('applyTitle').textContent = applyInfo.title;
+  document.getElementById('applyTitle').textContent  = applyInfo.title;
   document.getElementById('applyPeriod').textContent = `신청 기간: ${applyInfo.startDate} ~ ${applyInfo.endDate}`;
   document.getElementById('applyMeta').innerHTML = `
     <span class="meta-tag">1인 최대 ${applyInfo.maxPerUser}개</span>
-    <span class="meta-tag">${applyInfo.allowedGroups?.join(', ')}</span>
+    <span class="meta-tag">${applyInfo.allowedGroups.join(', ') || '전체'}</span>
   `;
 
-  allItems = applyInfo.items || [];
+  allItems = applyInfo.items;
   updateMyCount();
   renderItems(allItems);
 
-  // Polling for real-time updates
-  setInterval(refreshItems, 5000);
+  /* 5초마다 인원 현황 갱신 (GAS 연결 시에만) */
+  if (GAS_READY) setInterval(refreshItems, 5000);
 }
 
+/* ============================================================
+   내 신청 현황 배지
+============================================================ */
 function updateMyCount() {
-  document.getElementById('myCountBadge').textContent = `내 신청: ${myApplied.size}/${applyInfo.maxPerUser}`;
+  document.getElementById('myCountBadge').textContent =
+    `내 신청: ${myApplied.size}/${applyInfo.maxPerUser}`;
 }
 
+/* ============================================================
+   항목 검색
+============================================================ */
 function filterItems() {
   const kw = document.getElementById('searchInput').value.trim().toLowerCase();
-  const filtered = kw ? allItems.filter(i => i.name.toLowerCase().includes(kw)) : allItems;
-  renderItems(filtered);
+  renderItems(kw ? allItems.filter(i => i.name.toLowerCase().includes(kw)) : allItems);
 }
 
+/* ============================================================
+   항목 렌더링
+============================================================ */
 function renderItems(items) {
   const body = document.getElementById('itemsBody');
-  if (!items.length) {
+
+  if (!items || !items.length) {
     body.innerHTML = '<tr><td colspan="4"><div class="empty-state">항목이 없습니다.</div></td></tr>';
     return;
   }
 
   body.innerHTML = items.map((item, idx) => {
-    const pct = item.max > 0 ? (item.current / item.max) : 0;
-    const isFull = item.current >= item.max;
-    const isApplied = myApplied.has(item.id);
-    const capClass = pct >= 1 ? 'cap-full' : pct >= 0.8 ? 'cap-warn' : 'cap-ok';
+    const cur      = Number(item.current) || 0;
+    const max      = Number(item.max)     || 0;
+    const pct      = max > 0 ? cur / max : 0;
+    const isFull   = cur >= max;
+    const isApplied = myApplied.has(String(item.id));
+    const capClass  = pct >= 1 ? 'cap-full' : pct >= 0.8 ? 'cap-warn' : 'cap-ok';
 
     let btnClass = 'apply-item-btn';
-    let btnText = '신청하기';
+    let btnText  = '신청하기';
     let btnClick = `onclick="doApply('${item.id}')"`;
-    if (isApplied) { btnClass='apply-item-btn applied'; btnText='신청완료'; btnClick=''; }
-    else if (isFull) { btnClass='apply-item-btn full'; btnText='마감'; btnClick=''; }
+
+    if (isApplied) {
+      btnClass = 'apply-item-btn applied';
+      btnText  = '신청완료';
+      btnClick = '';
+    } else if (isFull) {
+      btnClass = 'apply-item-btn full';
+      btnText  = '마감';
+      btnClick = '';
+    }
 
     return `<tr>
-      <td style="text-align:center;color:var(--text-muted)">${idx+1}</td>
+      <td style="text-align:center;color:var(--text-muted)">${idx + 1}</td>
       <td class="item-name">${item.name}</td>
       <td class="item-count">
-        <div class="count-text ${isFull?'full':''}">${item.current}/${item.max}</div>
-        <div class="capacity-bar"><div class="capacity-fill ${capClass}" style="width:${Math.min(pct*100,100)}%"></div></div>
+        <div class="count-text ${isFull ? 'full' : ''}">${cur}/${max}</div>
+        <div class="capacity-bar">
+          <div class="capacity-fill ${capClass}" style="width:${Math.min(pct * 100, 100)}%"></div>
+        </div>
       </td>
       <td class="item-action"><button class="${btnClass}" ${btnClick}>${btnText}</button></td>
     </tr>`;
   }).join('');
 }
 
+/* ============================================================
+   인원 현황 폴링
+============================================================ */
 async function refreshItems() {
+  if (!GAS_READY) return;
   try {
-    const p = new URLSearchParams({ action: 'getItemCounts', applyId, userId: currentUser.id });
-    const res = await fetch(GAS_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: p.toString() });
-    const data = await res.json();
-    if (data.items) {
-      allItems = data.items;
-      myApplied = new Set(data.myApplied || []);
+    const data = await gasCall('getItemCounts', { applyId, userId: currentUser.id });
+    if (data && data.items) {
+      allItems  = data.items;
+      myApplied = new Set((data.myApplied || []).map(String));
       updateMyCount();
       filterItems();
     }
-  } catch(e) {}
+  } catch (e) {}
 }
 
-// ============================================================
-// Apply logic with queue
-// ============================================================
-let activeUsers = 0;
-
+/* ============================================================
+   신청 처리 (대기열 포함)
+============================================================ */
 async function doApply(itemId) {
   if (myApplied.size >= applyInfo.maxPerUser) {
     showAlert('⚠️', '신청 한도 초과', `최대 ${applyInfo.maxPerUser}개까지 신청 가능합니다.`);
     return;
   }
 
-  // Check concurrent users
-  try {
-    const p = new URLSearchParams({ action: 'getActiveUsers', applyId });
-    const res = await fetch(GAS_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: p.toString() });
-    const data = await res.json();
-    activeUsers = data.count || 0;
-  } catch(e) {
-    activeUsers = Math.floor(Math.random() * 8); // Demo: random
+  /* 동시 접속자 수 확인 */
+  if (GAS_READY) {
+    try {
+      const data = await gasCall('getActiveUsers', { applyId });
+      activeUsers = data.count || 0;
+    } catch (e) {
+      activeUsers = 0;
+    }
+  } else {
+    /* 데모 모드: 랜덤으로 가끔 대기열 체험 */
+    activeUsers = Math.random() < 0.3 ? Math.floor(Math.random() * 8) + 5 : 0;
   }
 
   if (activeUsers >= 5) {
@@ -406,125 +506,131 @@ async function doApply(itemId) {
 }
 
 async function submitApply(itemId) {
-  try {
-    const p = new URLSearchParams({ action: 'applyItem', applyId, itemId, userId: currentUser.id });
-    const res = await fetch(GAS_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: p.toString() });
-    const data = await res.json();
-    
-    if (data.success) {
-      myApplied.add(itemId);
-      updateMyCount();
-      showToast('✓ 신청이 완료되었습니다.', 'success');
-      allItems = allItems.map(i => i.id === itemId ? {...i, current: i.current+1} : i);
-      filterItems();
-    } else if (data.error === 'FULL') {
-      showAlert('🚫', '이미 정원이 찬 항목입니다', '다른 항목을 선택해 주세요.');
-    } else {
-      showAlert('❌', '신청에 실패했습니다', data.message || '잠시 후 다시 시도해 주세요.');
-    }
-  } catch(e) {
-    // Demo
-    const item = allItems.find(i => i.id === itemId);
-    if (item && item.current >= item.max) {
-      showAlert('🚫', '이미 정원이 찬 항목입니다', '다른 항목을 선택해 주세요.');
+  if (GAS_READY) {
+    try {
+      const data = await gasCall('applyItem', { applyId, itemId, userId: currentUser.id });
+      if (data.success) {
+        myApplied.add(String(itemId));
+        updateMyCount();
+        allItems = allItems.map(i => String(i.id) === String(itemId) ? { ...i, current: i.current + 1 } : i);
+        filterItems();
+        showToast('✓ 신청이 완료되었습니다.', 'success');
+      } else if (data.error === 'FULL') {
+        showAlert('🚫', '이미 정원이 찬 항목입니다', '다른 항목을 선택해 주세요.');
+      } else if (data.error === 'ALREADY') {
+        showAlert('ℹ️', '이미 신청한 항목입니다', '');
+      } else {
+        showAlert('❌', '신청에 실패했습니다', data.message || '잠시 후 다시 시도해 주세요.');
+      }
       return;
+    } catch (e) {
+      console.warn('GAS 신청 실패, 데모 모드로 처리:', e);
     }
-    myApplied.add(itemId);
-    updateMyCount();
-    allItems = allItems.map(i => i.id === itemId ? {...i, current: i.current+1} : i);
-    filterItems();
-    showToast('✓ 신청이 완료되었습니다.', 'success');
   }
+
+  /* 데모 모드 로컬 처리 */
+  const item = allItems.find(i => String(i.id) === String(itemId));
+  if (item && item.current >= item.max) {
+    showAlert('🚫', '이미 정원이 찬 항목입니다', '다른 항목을 선택해 주세요.');
+    return;
+  }
+  myApplied.add(String(itemId));
+  updateMyCount();
+  allItems = allItems.map(i => String(i.id) === String(itemId) ? { ...i, current: i.current + 1 } : i);
+  filterItems();
+  showToast('✓ 신청이 완료되었습니다. (데모)', 'success');
 }
 
-// ============================================================
-// Queue System
-// ============================================================
-let queuePos = 0;
-let totalInQueue = 0;
-
+/* ============================================================
+   대기열 시스템
+============================================================ */
 function startQueue(userCount) {
-  const overlay = document.getElementById('queueOverlay');
-  overlay.classList.add('active');
-
-  // Initialize queue position
-  queuePos = userCount;
+  queuePos     = userCount;
   totalInQueue = userCount + 1;
-
+  document.getElementById('queueOverlay').classList.add('active');
   updateQueueUI();
 
   queueInterval = setInterval(async () => {
-    try {
-      const p = new URLSearchParams({ action: 'checkQueue', applyId, userId: currentUser.id });
-      const res = await fetch(GAS_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: p.toString() });
-      const data = await res.json();
-      
-      if (data.canProceed) {
-        clearInterval(queueInterval);
-        overlay.classList.remove('active');
-        submitApply(pendingItemId);
-        pendingItemId = null;
-        return;
+    if (GAS_READY) {
+      try {
+        const data = await gasCall('checkQueue', { applyId, userId: currentUser.id });
+        if (data.canProceed) {
+          clearQueue();
+          submitApply(pendingItemId);
+          pendingItemId = null;
+          return;
+        }
+        queuePos     = data.position ?? Math.max(0, queuePos - 1);
+        totalInQueue = data.total    ?? totalInQueue;
+      } catch (e) {
+        queuePos = Math.max(0, queuePos - 1);
       }
-      queuePos = data.position || Math.max(0, queuePos - 1);
-      totalInQueue = data.total || totalInQueue;
-    } catch(e) {
-      // Demo: simulate queue moving
+    } else {
+      /* 데모: 2초마다 1명씩 줄어듦 */
       queuePos = Math.max(0, queuePos - 1);
     }
 
     if (queuePos <= 0) {
-      clearInterval(queueInterval);
-      overlay.classList.remove('active');
+      clearQueue();
       submitApply(pendingItemId);
       pendingItemId = null;
       return;
     }
-
     updateQueueUI();
   }, 2000);
 }
 
-function updateQueueUI() {
-  const pct = totalInQueue > 0 ? Math.round(((totalInQueue - queuePos) / totalInQueue) * 100) : 0;
-  const after = Math.max(0, Math.floor(Math.random() * 3));
-  const waitSec = queuePos * 2;
-  const waitStr = waitSec >= 60 ? `${Math.floor(waitSec/60)}분 ${waitSec%60}초` : `${waitSec}초`;
-
-  document.getElementById('queueProgressFill').style.width = pct + '%';
-  document.getElementById('queuePercent').textContent = `${pct}% (${totalInQueue-queuePos}/${totalInQueue})`;
-  document.getElementById('queueBefore').textContent = `${queuePos}명`;
-  document.getElementById('queueAfter').textContent = `${after}명`;
-  document.getElementById('queueTime').textContent = waitStr;
+function clearQueue() {
+  clearInterval(queueInterval);
+  document.getElementById('queueOverlay').classList.remove('active');
 }
 
 function cancelQueue() {
-  if (queueInterval) clearInterval(queueInterval);
-  document.getElementById('queueOverlay').classList.remove('active');
+  clearQueue();
   pendingItemId = null;
 }
 
-// ============================================================
-// UI utils
-// ============================================================
+function updateQueueUI() {
+  const pct     = totalInQueue > 0 ? Math.round(((totalInQueue - queuePos) / totalInQueue) * 100) : 0;
+  const after   = Math.max(0, Math.floor(Math.random() * 3));
+  const waitSec = queuePos * 2;
+  const waitStr = waitSec >= 60
+    ? `${Math.floor(waitSec / 60)}분 ${waitSec % 60}초`
+    : `${waitSec}초`;
+
+  document.getElementById('queueProgressFill').style.width = pct + '%';
+  document.getElementById('queuePercent').textContent      = `${pct}% (${totalInQueue - queuePos}/${totalInQueue})`;
+  document.getElementById('queueBefore').textContent       = `${queuePos}명`;
+  document.getElementById('queueAfter').textContent        = `${after}명`;
+  document.getElementById('queueTime').textContent         = waitStr;
+}
+
+/* ============================================================
+   UI 유틸
+============================================================ */
 function showAlert(icon, msg, sub) {
   document.getElementById('alertIcon').textContent = icon;
-  document.getElementById('alertMsg').textContent = msg;
-  document.getElementById('alertSub').textContent = sub || '';
+  document.getElementById('alertMsg').textContent  = msg;
+  document.getElementById('alertSub').textContent  = sub || '';
   document.getElementById('alertModal').classList.add('active');
 }
 function closeAlert() { document.getElementById('alertModal').classList.remove('active'); }
-document.getElementById('alertModal').addEventListener('click', function(e) { if(e.target===this) closeAlert(); });
+document.getElementById('alertModal').addEventListener('click', function(e) {
+  if (e.target === this) closeAlert();
+});
 
 let toastTimer;
 function showToast(msg, type = '') {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.className = 'toast show ' + type;
+  t.className   = 'toast show ' + type;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
 }
 
+/* ============================================================
+   실행
+============================================================ */
 init();
 </script>
 </body>
