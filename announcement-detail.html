@@ -7,18 +7,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --primary: #1a4fa0;
-    --primary-light: #2563cc;
-    --primary-dark: #0f3070;
-    --accent: #e8f0fe;
-    --text: #1a1a2e;
-    --text-muted: #6b7280;
-    --border: #dde3ef;
-    --white: #ffffff;
-    --bg: #f4f6fb;
-    --shadow: 0 2px 12px rgba(26,79,160,0.10);
-    --radius: 10px;
-    --success: #16a34a;
+    --primary: #1a4fa0; --primary-light: #2563cc; --primary-dark: #0f3070;
+    --accent: #e8f0fe; --text: #1a1a2e; --text-muted: #6b7280;
+    --border: #dde3ef; --white: #ffffff; --bg: #f4f6fb;
+    --shadow: 0 2px 12px rgba(26,79,160,0.10); --radius: 10px; --success: #16a34a;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
@@ -48,35 +40,28 @@
 
   .query-card {
     background: white; border-radius: var(--radius);
-    border: 1.5px solid var(--border); padding: 28px;
-    box-shadow: var(--shadow);
+    border: 1.5px solid var(--border); padding: 28px; box-shadow: var(--shadow);
   }
   .query-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 20px; color: var(--primary-dark); }
-  
-  .field-row {
-    display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;
-  }
-  .field-label {
-    font-size: 13px; font-weight: 600; color: var(--text-muted);
-  }
+
+  .field-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .field-label { font-size: 13px; font-weight: 600; color: var(--text-muted); }
   .field-input {
-    width: 100%; border: 1.5px solid var(--border);
-    border-radius: 8px; padding: 12px 14px;
-    font-size: 15px; font-family: 'Noto Sans KR', sans-serif;
+    width: 100%; border: 1.5px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; font-size: 15px; font-family: 'Noto Sans KR', sans-serif;
     outline: none; transition: border-color 0.15s; color: var(--text);
   }
   .field-input:focus { border-color: var(--primary); }
 
   .query-btn {
-    width: 100%; background: var(--primary); color: white;
-    border: none; border-radius: 8px; padding: 13px;
-    font-size: 15px; font-weight: 700; cursor: pointer;
-    font-family: 'Noto Sans KR', sans-serif; margin-top: 8px;
+    width: 100%; background: var(--primary); color: white; border: none;
+    border-radius: 8px; padding: 13px; font-size: 15px; font-weight: 700;
+    cursor: pointer; font-family: 'Noto Sans KR', sans-serif; margin-top: 8px;
     transition: background 0.15s;
   }
   .query-btn:hover { background: var(--primary-dark); }
+  .query-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-  /* Result */
   .result-card {
     display: none; margin-top: 24px; background: white;
     border-radius: var(--radius); border: 1.5px solid var(--border);
@@ -84,39 +69,35 @@
   }
   .result-card.show { display: block; animation: fadeIn 0.3s ease; }
   @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-  
+
   .result-header {
     display: flex; align-items: center; gap: 10px;
-    padding-bottom: 16px; border-bottom: 1.5px solid var(--border);
-    margin-bottom: 20px;
+    padding-bottom: 16px; border-bottom: 1.5px solid var(--border); margin-bottom: 20px;
   }
   .result-check {
-    width: 36px; height: 36px; background: #dcfce7;
-    border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    font-size: 18px; flex-shrink: 0;
+    width: 36px; height: 36px; background: #dcfce7; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
   }
-  .result-name { font-size: 17px; font-weight: 700; color: var(--text); }
+  .result-name { font-size: 17px; font-weight: 700; }
   .result-sub { font-size: 13px; color: var(--text-muted); }
 
   .result-items { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .result-item {
-    background: var(--bg); border-radius: 8px; padding: 14px 16px;
-  }
+  .result-item { background: var(--bg); border-radius: 8px; padding: 14px 16px; }
   .result-item-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
-  .result-item-value { font-size: 20px; font-weight: 700; color: var(--primary); }
+  .result-item-value { font-size: 24px; font-weight: 700; color: var(--primary); }
 
   .error-msg {
-    display: none; text-align: center; padding: 20px;
+    display: none; margin-top: 24px; text-align: center; padding: 28px;
+    background: white; border-radius: var(--radius); border: 1.5px solid #fecaca;
     color: #dc2626; font-size: 15px; font-weight: 600;
   }
   .error-msg.show { display: block; animation: fadeIn 0.3s ease; }
 
-  /* Loading */
   .spinner-inline {
-    display: inline-block; width: 20px; height: 20px;
-    border: 2px solid rgba(255,255,255,0.4);
-    border-top-color: white; border-radius: 50%;
-    animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px;
+    display: inline-block; width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.4); border-top-color: white;
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+    vertical-align: middle; margin-right: 6px;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 </style>
@@ -140,9 +121,7 @@
 
   <div class="query-card">
     <h3>🔍 조회하기</h3>
-    <div id="queryFields">
-      <!-- Dynamically generated fields based on announcement config -->
-    </div>
+    <div id="queryFields"></div>
     <button class="query-btn" id="queryBtn" onclick="doQuery()">조회</button>
   </div>
 
@@ -161,124 +140,203 @@
 </div>
 
 <script>
-const GAS_URL = 'YOUR_GAS_URL_HERE';
-const params = new URLSearchParams(window.location.search);
-const annId = params.get('id');
+/* =====================================================
+   설정
+===================================================== */
+const GAS_URL   = 'YOUR_GAS_URL_HERE';
+const GAS_READY = GAS_URL && !GAS_URL.includes('YOUR_GAS');
 
-// Mock data - cols 구조 통일 (type: 'id'=식별자, 'result'=결과, 'normal'=일반)
-const mockAnnouncements = {
-  1: {
-    id: 1, title: '2026 반편성 발표',
-    startDate: '2026-02-21 15:00', endDate: '2026-02-22 17:00',
-    cols: [
-      { name: '이름', type: 'id' },
-      { name: '생년월일(6자리)', type: 'id' },
-      { name: '반', type: 'result' },
-      { name: '번호', type: 'result' }
-    ],
-    data: [
-      { '이름': '홍길동', '생년월일(6자리)': '110305', '반': '8', '번호': '21' },
-      { '이름': '김진경', '생년월일(6자리)': '120201', '반': '2', '번호': '31' },
-      { '이름': '이민수', '생년월일(6자리)': '110715', '반': '5', '번호': '14' },
-    ]
-  }
+const urlParams = new URLSearchParams(window.location.search);
+const annId     = urlParams.get('id');   // 항상 문자열
+
+/* =====================================================
+   기본 Mock — GAS 미연결 시 항상 이걸 사용
+   (실제 배포 후에는 GAS 데이터로 대체됨)
+===================================================== */
+const DEFAULT_MOCK = {
+  id: annId,
+  title: '2026 반편성 발표',
+  startDate: '2026-02-21 15:00',
+  endDate:   '2026-02-22 17:00',
+  cols: [
+    { name: '이름',            type: 'id'     },
+    { name: '생년월일(6자리)', type: 'id'     },
+    { name: '반',              type: 'result' },
+    { name: '번호',            type: 'result' }
+  ],
+  data: [
+    { '이름': '홍길동', '생년월일(6자리)': '110305', '반': '8',  '번호': '21' },
+    { '이름': '김진경', '생년월일(6자리)': '120201', '반': '2',  '번호': '31' },
+    { '이름': '이민수', '생년월일(6자리)': '110715', '반': '5',  '번호': '14' }
+  ]
 };
 
 let annInfo = null;
 
-// cols에서 식별자/결과 컬럼 추출 헬퍼
+/* =====================================================
+   헬퍼
+===================================================== */
 function getIdCols(info)     { return (info.cols || []).filter(c => c.type === 'id').map(c => c.name); }
 function getResultCols(info) { return (info.cols || []).filter(c => c.type === 'result').map(c => c.name); }
 
+// 한글 포함 필드명을 input id로 쓸 수 있도록 인코딩
+function safeInputId(field) {
+  return 'inp_' + field.split('').map(c => c.charCodeAt(0).toString(16)).join('_');
+}
+
+/* =====================================================
+   초기화
+===================================================== */
 async function init() {
-  try {
-    const p = new URLSearchParams({ action: 'getAnnouncementDetail', id: annId });
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: p.toString()
-    });
-    const json = await res.json();
-    // GAS에서 cols가 문자열로 올 경우 파싱
-    if (json && json.title) {
-      annInfo = json;
-      if (typeof annInfo.cols === 'string') annInfo.cols = JSON.parse(annInfo.cols);
-      if (typeof annInfo.data === 'string') annInfo.data = JSON.parse(annInfo.data);
-    } else {
-      throw new Error('no data');
+
+  /* 1) GAS 연결된 경우만 fetch */
+  if (GAS_READY) {
+    try {
+      const body = new URLSearchParams({ action: 'getAnnouncementDetail', id: annId });
+      const res  = await fetch(GAS_URL, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body:    body.toString()
+      });
+      const json = await res.json();
+      if (json && json.title && json.cols) {
+        annInfo = json;
+        if (typeof annInfo.cols === 'string') annInfo.cols = JSON.parse(annInfo.cols);
+        if (typeof annInfo.data === 'string') annInfo.data = JSON.parse(annInfo.data || '[]');
+      }
+    } catch (e) {
+      console.warn('GAS fetch 실패:', e);
     }
-  } catch(e) {
-    // GAS 미연결 시 mock 사용
-    annInfo = mockAnnouncements[annId] || mockAnnouncements[1];
   }
 
-  if (!annInfo || !annInfo.cols) {
-    document.getElementById('annTitle').textContent = '발표 정보를 불러올 수 없습니다.';
+  /* 2) sessionStorage 캐시 확인 (announcement.html에서 저장한 목록) */
+  if (!annInfo) {
+    try {
+      const raw = sessionStorage.getItem('annList');
+      if (raw) {
+        const list = JSON.parse(raw);
+        const hit  = list.find(a => String(a.id) === String(annId));
+        if (hit && hit.cols) {
+          annInfo = hit;
+          if (typeof annInfo.cols === 'string') annInfo.cols = JSON.parse(annInfo.cols || '[]');
+          if (typeof annInfo.data === 'string') annInfo.data = JSON.parse(annInfo.data || '[]');
+        }
+      }
+    } catch (e) {}
+  }
+
+  /* 3) 폴백 → DEFAULT_MOCK */
+  if (!annInfo || !Array.isArray(annInfo.cols) || annInfo.cols.length === 0) {
+    annInfo = DEFAULT_MOCK;
+  }
+
+  /* ── UI 렌더링 ── */
+  document.getElementById('headerTitle').textContent = annInfo.title;
+  document.getElementById('annTitle').textContent    = annInfo.title;
+  document.getElementById('annPeriod').textContent   =
+    `발표 기간: ${annInfo.startDate} ~ ${annInfo.endDate}`;
+
+  const idCols   = getIdCols(annInfo);
+  const fieldsEl = document.getElementById('queryFields');
+
+  if (idCols.length === 0) {
+    fieldsEl.innerHTML =
+      '<p style="color:var(--text-muted);font-size:14px">식별자 컬럼이 설정되지 않았습니다.</p>';
     return;
   }
 
-  document.getElementById('headerTitle').textContent = annInfo.title;
-  document.getElementById('annTitle').textContent = annInfo.title;
-  document.getElementById('annPeriod').textContent = `발표 기간: ${annInfo.startDate} ~ ${annInfo.endDate}`;
-
-  // 식별자 컬럼으로 입력 폼 생성
-  const idCols = getIdCols(annInfo);
-  const fieldsEl = document.getElementById('queryFields');
+  // 입력 필드 생성
   fieldsEl.innerHTML = idCols.map(field => `
     <div class="field-row">
       <label class="field-label">${field}</label>
-      <input class="field-input" type="text" id="field_${CSS.escape(field)}" placeholder="${field} 입력" autocomplete="off">
+      <input class="field-input"
+             type="text"
+             id="${safeInputId(field)}"
+             placeholder="${field} 입력"
+             autocomplete="off">
     </div>
   `).join('');
+
+  // Enter 키 처리
+  const inputs = Array.from(fieldsEl.querySelectorAll('input'));
+  inputs.forEach((inp, i) => {
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (i < inputs.length - 1) inputs[i + 1].focus();
+        else doQuery();
+      }
+    });
+  });
+  if (inputs.length > 0) inputs[0].focus();
 }
 
+/* =====================================================
+   조회
+===================================================== */
 async function doQuery() {
-  const btn = document.getElementById('queryBtn');
-  btn.innerHTML = '<span class="spinner-inline"></span>조회 중...';
-  btn.disabled = true;
-
+  const btn    = document.getElementById('queryBtn');
   const idCols = getIdCols(annInfo);
-  const queryData = {};
-  idCols.forEach(field => {
-    const el = document.getElementById(`field_${CSS.escape(field)}`);
-    queryData[field] = el ? el.value.trim() : '';
-  });
 
-  // 빈 값 체크
+  // 입력값 수집
+  const queryData = {};
+  for (const field of idCols) {
+    const el = document.getElementById(safeInputId(field));
+    queryData[field] = el ? el.value.trim() : '';
+  }
+
+  // 빈 값 검증
   for (const [k, v] of Object.entries(queryData)) {
     if (!v) {
       alert(`${k}을(를) 입력해 주세요.`);
-      btn.innerHTML = '조회';
-      btn.disabled = false;
+      document.getElementById(safeInputId(k))?.focus();
       return;
     }
   }
 
-  try {
-    const p = new URLSearchParams({ action: 'queryAnnouncement', id: annId, ...queryData });
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: p.toString()
-    });
-    const result = await res.json();
-    showResult(result, queryData);
-  } catch(e) {
-    // GAS 미연결 시 로컬 검색
-    const data = annInfo.data || [];
+  btn.innerHTML = '<span class="spinner-inline"></span>조회 중...';
+  btn.disabled  = true;
+
+  let result = null;
+
+  // GAS 조회
+  if (GAS_READY) {
+    try {
+      const body = new URLSearchParams({ action: 'queryAnnouncement', id: annId, ...queryData });
+      const res  = await fetch(GAS_URL, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body:    body.toString()
+      });
+      result = await res.json();
+    } catch (e) {
+      console.warn('GAS 조회 실패, 로컬 검색으로 대체');
+    }
+  }
+
+  // GAS 실패 or 미연결 → 로컬 배열 검색
+  if (!result) {
+    const data  = annInfo.data || [];
     const found = data.find(row =>
-      idCols.every(field => String(row[field]).trim() === String(queryData[field]).trim())
+      idCols.every(field =>
+        String(row[field] ?? '').trim() === String(queryData[field]).trim()
+      )
     );
-    showResult(found ? { found: true, data: found } : { found: false }, queryData);
+    result = found ? { found: true, data: found } : { found: false };
   }
 
   btn.innerHTML = '조회';
-  btn.disabled = false;
+  btn.disabled  = false;
+
+  showResult(result);
 }
 
-function showResult(result, queryData) {
+/* =====================================================
+   결과 렌더링
+===================================================== */
+function showResult(result) {
   const resultCard = document.getElementById('resultCard');
-  const errorMsg  = document.getElementById('errorMsg');
+  const errorMsg   = document.getElementById('errorMsg');
   resultCard.classList.remove('show');
   errorMsg.classList.remove('show');
 
@@ -286,7 +344,7 @@ function showResult(result, queryData) {
     const idCols     = getIdCols(annInfo);
     const resultCols = getResultCols(annInfo);
 
-    document.getElementById('resultName').textContent = result.data[idCols[0]] || '';
+    document.getElementById('resultName').textContent = result.data[idCols[0]] ?? '';
 
     document.getElementById('resultItems').innerHTML = resultCols.map(field => `
       <div class="result-item">
@@ -301,6 +359,9 @@ function showResult(result, queryData) {
   }
 }
 
+/* =====================================================
+   실행
+===================================================== */
 init();
 </script>
 </body>
