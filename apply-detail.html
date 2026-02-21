@@ -3,22 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>발표 조회 - 상세</title>
+<title>온라인 신청 - 상세</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --primary: #1a4fa0;
-    --primary-light: #2563cc;
-    --primary-dark: #0f3070;
-    --accent: #e8f0fe;
-    --text: #1a1a2e;
-    --text-muted: #6b7280;
-    --border: #dde3ef;
-    --white: #ffffff;
-    --bg: #f4f6fb;
-    --shadow: 0 2px 12px rgba(26,79,160,0.10);
-    --radius: 10px;
-    --success: #16a34a;
+    --primary: #1a4fa0; --primary-light: #2563cc; --primary-dark: #0f3070;
+    --accent: #e8f0fe; --text: #1a1a2e; --text-muted: #6b7280;
+    --border: #dde3ef; --white: #ffffff; --bg: #f4f6fb;
+    --shadow: 0 2px 12px rgba(26,79,160,0.10); --radius: 10px;
+    --success: #16a34a; --danger: #dc2626;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
@@ -26,6 +19,7 @@
   header {
     background: var(--primary); color: white; padding: 0 24px;
     height: 60px; display: flex; align-items: center; gap: 16px;
+    position: sticky; top: 0; z-index: 100;
   }
   .back-btn {
     background: rgba(255,255,255,0.15); border: none; color: white;
@@ -34,271 +28,501 @@
     text-decoration: none; transition: background 0.15s;
   }
   .back-btn:hover { background: rgba(255,255,255,0.25); }
-  .header-title { font-size: 17px; font-weight: 700; }
+  .header-title { font-size: 17px; font-weight: 700; flex: 1; }
+  .my-count-badge {
+    background: rgba(255,255,255,0.2); padding: 4px 12px;
+    border-radius: 20px; font-size: 13px;
+  }
 
-  .container { max-width: 600px; margin: 0 auto; padding: 32px 16px; }
+  .container { max-width: 800px; margin: 0 auto; padding: 24px 16px; }
 
-  .ann-header {
+  .apply-header {
     background: white; border-radius: var(--radius);
-    border: 1.5px solid var(--border); padding: 24px 28px;
-    margin-bottom: 24px; box-shadow: var(--shadow);
+    border: 1.5px solid var(--border); padding: 20px 24px;
+    margin-bottom: 20px; box-shadow: var(--shadow);
+    display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap;
   }
-  .ann-title { font-size: 20px; font-weight: 700; color: var(--primary-dark); margin-bottom: 6px; }
-  .ann-period { font-size: 13px; color: var(--text-muted); }
+  .apply-header-info { flex: 1; min-width: 200px; }
+  .apply-title { font-size: 19px; font-weight: 700; color: var(--primary-dark); margin-bottom: 4px; }
+  .apply-period { font-size: 13px; color: var(--text-muted); }
+  .apply-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+  .meta-tag {
+    background: var(--accent); color: var(--primary); font-size: 12px;
+    font-weight: 600; padding: 3px 10px; border-radius: 12px;
+  }
 
-  .query-card {
-    background: white; border-radius: var(--radius);
-    border: 1.5px solid var(--border); padding: 28px;
-    box-shadow: var(--shadow);
+  /* Search */
+  .search-row {
+    background: white; border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: 14px 18px;
+    display: flex; gap: 10px; margin-bottom: 16px; box-shadow: var(--shadow);
   }
-  .query-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 20px; color: var(--primary-dark); }
-  
-  .field-row {
-    display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;
+  .search-row input {
+    flex: 1; border: 1.5px solid var(--border); border-radius: 6px;
+    padding: 9px 12px; font-size: 14px; font-family: 'Noto Sans KR', sans-serif; outline: none;
   }
-  .field-label {
-    font-size: 13px; font-weight: 600; color: var(--text-muted);
+  .search-row input:focus { border-color: var(--primary); }
+  .search-row button {
+    background: var(--primary); color: white; border: none;
+    border-radius: 6px; padding: 8px 18px; font-size: 14px;
+    font-weight: 600; cursor: pointer; font-family: 'Noto Sans KR', sans-serif;
   }
-  .field-input {
-    width: 100%; border: 1.5px solid var(--border);
-    border-radius: 8px; padding: 12px 14px;
-    font-size: 15px; font-family: 'Noto Sans KR', sans-serif;
-    outline: none; transition: border-color 0.15s; color: var(--text);
-  }
-  .field-input:focus { border-color: var(--primary); }
 
-  .query-btn {
-    width: 100%; background: var(--primary); color: white;
-    border: none; border-radius: 8px; padding: 13px;
-    font-size: 15px; font-weight: 700; cursor: pointer;
-    font-family: 'Noto Sans KR', sans-serif; margin-top: 8px;
-    transition: background 0.15s;
-  }
-  .query-btn:hover { background: var(--primary-dark); }
+  /* Items */
+  .items-table { background: white; border-radius: var(--radius); border: 1.5px solid var(--border); overflow: hidden; box-shadow: var(--shadow); }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { background: #f0f4fb; padding: 12px 16px; font-size: 13px; font-weight: 600; color: var(--primary-dark); text-align: center; border-bottom: 1.5px solid var(--border); }
+  tbody tr { border-bottom: 1px solid #eef0f6; transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover:not(.full-row) { background: #f8faff; }
+  td { padding: 13px 16px; font-size: 14px; vertical-align: middle; }
+  td.item-name { font-weight: 500; }
+  td.item-count { text-align: center; }
+  td.item-action { text-align: center; }
 
-  /* Result */
-  .result-card {
-    display: none; margin-top: 24px; background: white;
-    border-radius: var(--radius); border: 1.5px solid var(--border);
-    padding: 28px; box-shadow: var(--shadow);
+  .capacity-bar {
+    width: 80px; background: #e5e7eb; border-radius: 4px;
+    height: 6px; margin: 4px auto 0; overflow: hidden;
   }
-  .result-card.show { display: block; animation: fadeIn 0.3s ease; }
-  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-  
-  .result-header {
-    display: flex; align-items: center; gap: 10px;
-    padding-bottom: 16px; border-bottom: 1.5px solid var(--border);
-    margin-bottom: 20px;
-  }
-  .result-check {
-    width: 36px; height: 36px; background: #dcfce7;
-    border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    font-size: 18px; flex-shrink: 0;
-  }
-  .result-name { font-size: 17px; font-weight: 700; color: var(--text); }
-  .result-sub { font-size: 13px; color: var(--text-muted); }
+  .capacity-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+  .cap-ok { background: var(--success); }
+  .cap-warn { background: #f59e0b; }
+  .cap-full { background: var(--danger); }
+  .count-text { font-size: 13px; }
+  .count-text.full { color: var(--danger); font-weight: 600; }
 
-  .result-items { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .result-item {
-    background: var(--bg); border-radius: 8px; padding: 14px 16px;
+  .apply-item-btn {
+    background: var(--primary); color: white; border: none;
+    border-radius: 6px; padding: 7px 14px; font-size: 13px;
+    font-weight: 600; cursor: pointer; font-family: 'Noto Sans KR', sans-serif;
+    transition: all 0.15s;
   }
-  .result-item-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
-  .result-item-value { font-size: 20px; font-weight: 700; color: var(--primary); }
+  .apply-item-btn:hover { background: var(--primary-dark); }
+  .apply-item-btn.full { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
+  .apply-item-btn.applied { background: #dcfce7; color: var(--success); cursor: default; border: 1.5px solid #bbf7d0; }
 
-  .error-msg {
-    display: none; text-align: center; padding: 20px;
-    color: #dc2626; font-size: 15px; font-weight: 600;
-  }
-  .error-msg.show { display: block; animation: fadeIn 0.3s ease; }
-
-  /* Loading */
-  .spinner-inline {
-    display: inline-block; width: 20px; height: 20px;
-    border: 2px solid rgba(255,255,255,0.4);
-    border-top-color: white; border-radius: 50%;
-    animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px;
-  }
+  .empty-state { padding: 60px; text-align: center; color: var(--text-muted); }
+  .loading { text-align: center; padding: 40px; color: var(--text-muted); }
+  .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ======= QUEUE OVERLAY ======= */
+  .queue-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(255,255,255,0.97); z-index: 2000;
+    align-items: center; justify-content: center; flex-direction: column;
+  }
+  .queue-overlay.active { display: flex; }
+  .queue-logo { font-size: 56px; margin-bottom: 20px; animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+  .queue-title { font-size: 22px; font-weight: 700; color: var(--primary-dark); margin-bottom: 8px; text-align: center; }
+  .queue-sub { font-size: 15px; color: var(--text-muted); margin-bottom: 36px; text-align: center; }
+  
+  .queue-progress-wrap { width: min(80vw, 360px); margin-bottom: 28px; }
+  .queue-progress-bar { width: 100%; background: #e5e7eb; border-radius: 8px; height: 12px; overflow: hidden; margin-bottom: 10px; }
+  .queue-progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary-light), var(--primary)); border-radius: 8px; transition: width 1s ease; }
+  .queue-percent { text-align: center; font-size: 20px; font-weight: 700; color: var(--primary); }
+
+  .queue-stats { background: #f4f6fb; border-radius: 12px; padding: 18px 24px; width: min(80vw, 360px); margin-bottom: 32px; }
+  .queue-stat { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .queue-stat:last-child { border-bottom: none; }
+  .queue-stat-label { color: var(--text-muted); }
+  .queue-stat-value { font-weight: 700; color: var(--primary); }
+
+  .queue-notice {
+    background: #fef3c7; border-radius: 8px; padding: 12px 16px;
+    font-size: 13px; color: #92400e; width: min(80vw, 360px);
+    margin-bottom: 24px; line-height: 1.6;
+  }
+  .queue-cancel-btn {
+    background: #f3f4f6; color: var(--text); border: none; border-radius: 8px;
+    padding: 11px 32px; font-size: 14px; font-weight: 600; cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: #1a1a2e; color: white; padding: 12px 24px; border-radius: 24px;
+    font-size: 14px; font-weight: 500; z-index: 3000; transition: transform 0.3s ease;
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { background: #166534; }
+  .toast.error { background: #991b1b; }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1500; align-items: center; justify-content: center; }
+  .modal-overlay.active { display: flex; }
+  .modal { background: white; border-radius: 14px; padding: 32px 28px; width: 90%; max-width: 360px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.25); animation: modalIn 0.2s ease; }
+  @keyframes modalIn { from { opacity:0; transform:scale(0.92); } to { opacity:1; transform:scale(1); } }
+  .modal-icon { font-size: 40px; margin-bottom: 12px; }
+  .modal-msg { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  .modal-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+  .modal-ok-btn { background: var(--primary); color: white; border: none; border-radius: 8px; padding: 11px 32px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Noto Sans KR', sans-serif; }
+
+  @media (max-width: 600px) {
+    thead th:nth-child(2), td:nth-child(2) { display: none; }
+    .apply-header { padding: 14px 16px; }
+  }
 </style>
 </head>
 <body>
 
 <header>
-  <a class="back-btn" href="announcement.html">
+  <a class="back-btn" href="apply.html">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
       <polyline points="15 18 9 12 15 6"/>
     </svg>
   </a>
-  <div class="header-title" id="headerTitle">발표 조회</div>
+  <div class="header-title" id="headerTitle">온라인 신청</div>
+  <div class="my-count-badge" id="myCountBadge">내 신청: 0/0</div>
 </header>
 
 <div class="container">
-  <div class="ann-header">
-    <div class="ann-title" id="annTitle">불러오는 중...</div>
-    <div class="ann-period" id="annPeriod"></div>
-  </div>
-
-  <div class="query-card">
-    <h3>🔍 조회하기</h3>
-    <div id="queryFields">
-      <!-- Dynamically generated fields based on announcement config -->
+  <div class="apply-header">
+    <div class="apply-header-info">
+      <div class="apply-title" id="applyTitle">불러오는 중...</div>
+      <div class="apply-period" id="applyPeriod"></div>
     </div>
-    <button class="query-btn" id="queryBtn" onclick="doQuery()">조회</button>
+    <div class="apply-meta" id="applyMeta"></div>
   </div>
 
-  <div class="result-card" id="resultCard">
-    <div class="result-header">
-      <div class="result-check">✓</div>
-      <div>
-        <div class="result-name" id="resultName"></div>
-        <div class="result-sub">조회 결과</div>
-      </div>
-    </div>
-    <div class="result-items" id="resultItems"></div>
+  <div class="search-row">
+    <input type="text" id="searchInput" placeholder="항목 검색 (예: 통계학)" oninput="filterItems()">
+    <button onclick="filterItems()">검색</button>
   </div>
 
-  <div class="error-msg" id="errorMsg">❌ 발표 목록에 없습니다.</div>
+  <div class="items-table">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:50px">번호</th>
+          <th>항목명</th>
+          <th style="width:120px">인원</th>
+          <th style="width:90px">신청</th>
+        </tr>
+      </thead>
+      <tbody id="itemsBody">
+        <tr><td colspan="4"><div class="loading"><div class="spinner"></div>불러오는 중...</div></td></tr>
+      </tbody>
+    </table>
+  </div>
 </div>
 
-<script>
-const GAS_URL = 'YOUR_GAS_URL_HERE';
-const params = new URLSearchParams(window.location.search);
-const annId = params.get('id');
+<!-- Queue Overlay -->
+<div class="queue-overlay" id="queueOverlay">
+  <div class="queue-logo">⏳</div>
+  <div class="queue-title">신청 시스템 접속 대기중입니다.</div>
+  <div class="queue-sub">잠시만 기다리시면 해당 페이지로 자동 접속됩니다.</div>
 
-// Mock data - cols 구조 통일 (type: 'id'=식별자, 'result'=결과, 'normal'=일반)
-const mockAnnouncements = {
+  <div class="queue-progress-wrap">
+    <div class="queue-progress-bar">
+      <div class="queue-progress-fill" id="queueProgressFill" style="width:0%"></div>
+    </div>
+    <div class="queue-percent" id="queuePercent">0% (0/0)</div>
+  </div>
+
+  <div class="queue-stats">
+    <div class="queue-stat">
+      <span class="queue-stat-label">본인 앞 대기자수</span>
+      <span class="queue-stat-value" id="queueBefore">0명</span>
+    </div>
+    <div class="queue-stat">
+      <span class="queue-stat-label">본인 뒤 대기자수</span>
+      <span class="queue-stat-value" id="queueAfter">0명</span>
+    </div>
+    <div class="queue-stat">
+      <span class="queue-stat-label">예상대기시간</span>
+      <span class="queue-stat-value" id="queueTime">-</span>
+    </div>
+  </div>
+
+  <div class="queue-notice">
+    새로고침(F5)을 시도하시면 대기시간이 더 길어질 수 있습니다.<br>
+    시스템 사정에 따라 실제 대기시간과 차이가 날 수 있습니다.
+  </div>
+
+  <button class="queue-cancel-btn" onclick="cancelQueue()">중지</button>
+</div>
+
+<!-- Alert Modal -->
+<div class="modal-overlay" id="alertModal">
+  <div class="modal">
+    <div class="modal-icon" id="alertIcon">⚠️</div>
+    <div class="modal-msg" id="alertMsg"></div>
+    <div class="modal-sub" id="alertSub"></div>
+    <button class="modal-ok-btn" onclick="closeAlert()">확인</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbytw_fPkzxAjbz-S0kQ-TePZmDe2optYw1kalpsXjw-yF-2WxNsGufmeg5o9qbYOfQA9g/exec';
+const urlParams = new URLSearchParams(window.location.search);
+const applyId = urlParams.get('id');
+const currentUser = JSON.parse(sessionStorage.getItem('applyUser') || 'null');
+
+if (!currentUser) { window.location.href = 'apply.html'; }
+
+let applyInfo = null;
+let allItems = [];
+let myApplied = new Set();
+let queueInterval = null;
+let pendingItemId = null;
+
+// Mock data
+const mockData = {
   1: {
-    id: 1, title: '2026 반편성 발표',
+    id: 1, title: '2026 수강신청',
     startDate: '2026-02-21 15:00', endDate: '2026-02-22 17:00',
-    cols: [
-      { name: '이름', type: 'id' },
-      { name: '생년월일(6자리)', type: 'id' },
-      { name: '반', type: 'result' },
-      { name: '번호', type: 'result' }
-    ],
-    data: [
-      { '이름': '홍길동', '생년월일(6자리)': '110305', '반': '8', '번호': '21' },
-      { '이름': '김진경', '생년월일(6자리)': '120201', '반': '2', '번호': '31' },
-      { '이름': '이민수', '생년월일(6자리)': '110715', '반': '5', '번호': '14' },
+    maxPerUser: 5, allowedGroups: ['1학년','2학년','3학년'],
+    items: [
+      { id: 'A01', name: '통계학 A', current: 0, max: 25 },
+      { id: 'A02', name: '통계학 B', current: 23, max: 25 },
+      { id: 'A03', name: '경제학 A', current: 25, max: 25 },
+      { id: 'A04', name: '경제학 B', current: 12, max: 30 },
+      { id: 'A05', name: '철학 개론', current: 5, max: 20 },
+      { id: 'A06', name: '문학과 사회', current: 18, max: 20 },
+      { id: 'A07', name: '물리학 실험', current: 30, max: 30 },
+      { id: 'A08', name: '화학 개론', current: 8, max: 25 },
     ]
   }
 };
 
-let annInfo = null;
-
-// cols에서 식별자/결과 컬럼 추출 헬퍼
-function getIdCols(info)     { return (info.cols || []).filter(c => c.type === 'id').map(c => c.name); }
-function getResultCols(info) { return (info.cols || []).filter(c => c.type === 'result').map(c => c.name); }
-
 async function init() {
   try {
-    const p = new URLSearchParams({ action: 'getAnnouncementDetail', id: annId });
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: p.toString()
-    });
-    const json = await res.json();
-    // GAS에서 cols가 문자열로 올 경우 파싱
-    if (json && json.title) {
-      annInfo = json;
-      if (typeof annInfo.cols === 'string') annInfo.cols = JSON.parse(annInfo.cols);
-      if (typeof annInfo.data === 'string') annInfo.data = JSON.parse(annInfo.data);
-    } else {
-      throw new Error('no data');
-    }
+    const p = new URLSearchParams({ action: 'getApplyDetail', id: applyId, userId: currentUser.id });
+    const res = await fetch(GAS_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: p.toString() });
+    const data = await res.json();
+    applyInfo = data.apply;
+    myApplied = new Set(data.myApplied || []);
   } catch(e) {
-    // GAS 미연결 시 mock 사용
-    annInfo = mockAnnouncements[annId] || mockAnnouncements[1];
+    applyInfo = mockData[applyId] || mockData[1];
+    myApplied = new Set();
   }
 
-  if (!annInfo || !annInfo.cols) {
-    document.getElementById('annTitle').textContent = '발표 정보를 불러올 수 없습니다.';
+  document.getElementById('headerTitle').textContent = applyInfo.title;
+  document.getElementById('applyTitle').textContent = applyInfo.title;
+  document.getElementById('applyPeriod').textContent = `신청 기간: ${applyInfo.startDate} ~ ${applyInfo.endDate}`;
+  document.getElementById('applyMeta').innerHTML = `
+    <span class="meta-tag">1인 최대 ${applyInfo.maxPerUser}개</span>
+    <span class="meta-tag">${applyInfo.allowedGroups?.join(', ')}</span>
+  `;
+
+  allItems = applyInfo.items || [];
+  updateMyCount();
+  renderItems(allItems);
+
+  // Polling for real-time updates
+  setInterval(refreshItems, 5000);
+}
+
+function updateMyCount() {
+  document.getElementById('myCountBadge').textContent = `내 신청: ${myApplied.size}/${applyInfo.maxPerUser}`;
+}
+
+function filterItems() {
+  const kw = document.getElementById('searchInput').value.trim().toLowerCase();
+  const filtered = kw ? allItems.filter(i => i.name.toLowerCase().includes(kw)) : allItems;
+  renderItems(filtered);
+}
+
+function renderItems(items) {
+  const body = document.getElementById('itemsBody');
+  if (!items.length) {
+    body.innerHTML = '<tr><td colspan="4"><div class="empty-state">항목이 없습니다.</div></td></tr>';
     return;
   }
 
-  document.getElementById('headerTitle').textContent = annInfo.title;
-  document.getElementById('annTitle').textContent = annInfo.title;
-  document.getElementById('annPeriod').textContent = `발표 기간: ${annInfo.startDate} ~ ${annInfo.endDate}`;
+  body.innerHTML = items.map((item, idx) => {
+    const pct = item.max > 0 ? (item.current / item.max) : 0;
+    const isFull = item.current >= item.max;
+    const isApplied = myApplied.has(item.id);
+    const capClass = pct >= 1 ? 'cap-full' : pct >= 0.8 ? 'cap-warn' : 'cap-ok';
 
-  // 식별자 컬럼으로 입력 폼 생성
-  const idCols = getIdCols(annInfo);
-  const fieldsEl = document.getElementById('queryFields');
-  fieldsEl.innerHTML = idCols.map(field => `
-    <div class="field-row">
-      <label class="field-label">${field}</label>
-      <input class="field-input" type="text" id="field_${CSS.escape(field)}" placeholder="${field} 입력" autocomplete="off">
-    </div>
-  `).join('');
+    let btnClass = 'apply-item-btn';
+    let btnText = '신청하기';
+    let btnClick = `onclick="doApply('${item.id}')"`;
+    if (isApplied) { btnClass='apply-item-btn applied'; btnText='신청완료'; btnClick=''; }
+    else if (isFull) { btnClass='apply-item-btn full'; btnText='마감'; btnClick=''; }
+
+    return `<tr>
+      <td style="text-align:center;color:var(--text-muted)">${idx+1}</td>
+      <td class="item-name">${item.name}</td>
+      <td class="item-count">
+        <div class="count-text ${isFull?'full':''}">${item.current}/${item.max}</div>
+        <div class="capacity-bar"><div class="capacity-fill ${capClass}" style="width:${Math.min(pct*100,100)}%"></div></div>
+      </td>
+      <td class="item-action"><button class="${btnClass}" ${btnClick}>${btnText}</button></td>
+    </tr>`;
+  }).join('');
 }
 
-async function doQuery() {
-  const btn = document.getElementById('queryBtn');
-  btn.innerHTML = '<span class="spinner-inline"></span>조회 중...';
-  btn.disabled = true;
+async function refreshItems() {
+  try {
+    const p = new URLSearchParams({ action: 'getItemCounts', applyId, userId: currentUser.id });
+    const res = await fetch(GAS_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: p.toString() });
+    const data = await res.json();
+    if (data.items) {
+      allItems = data.items;
+      myApplied = new Set(data.myApplied || []);
+      updateMyCount();
+      filterItems();
+    }
+  } catch(e) {}
+}
 
-  const idCols = getIdCols(annInfo);
-  const queryData = {};
-  idCols.forEach(field => {
-    const el = document.getElementById(`field_${CSS.escape(field)}`);
-    queryData[field] = el ? el.value.trim() : '';
-  });
+// ============================================================
+// Apply logic with queue
+// ============================================================
+let activeUsers = 0;
 
-  // 빈 값 체크
-  for (const [k, v] of Object.entries(queryData)) {
-    if (!v) {
-      alert(`${k}을(를) 입력해 주세요.`);
-      btn.innerHTML = '조회';
-      btn.disabled = false;
+async function doApply(itemId) {
+  if (myApplied.size >= applyInfo.maxPerUser) {
+    showAlert('⚠️', '신청 한도 초과', `최대 ${applyInfo.maxPerUser}개까지 신청 가능합니다.`);
+    return;
+  }
+
+  // Check concurrent users
+  try {
+    const p = new URLSearchParams({ action: 'getActiveUsers', applyId });
+    const res = await fetch(GAS_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: p.toString() });
+    const data = await res.json();
+    activeUsers = data.count || 0;
+  } catch(e) {
+    activeUsers = Math.floor(Math.random() * 8); // Demo: random
+  }
+
+  if (activeUsers >= 5) {
+    pendingItemId = itemId;
+    startQueue(activeUsers);
+    return;
+  }
+
+  submitApply(itemId);
+}
+
+async function submitApply(itemId) {
+  try {
+    const p = new URLSearchParams({ action: 'applyItem', applyId, itemId, userId: currentUser.id });
+    const res = await fetch(GAS_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: p.toString() });
+    const data = await res.json();
+    
+    if (data.success) {
+      myApplied.add(itemId);
+      updateMyCount();
+      showToast('✓ 신청이 완료되었습니다.', 'success');
+      allItems = allItems.map(i => i.id === itemId ? {...i, current: i.current+1} : i);
+      filterItems();
+    } else if (data.error === 'FULL') {
+      showAlert('🚫', '이미 정원이 찬 항목입니다', '다른 항목을 선택해 주세요.');
+    } else {
+      showAlert('❌', '신청에 실패했습니다', data.message || '잠시 후 다시 시도해 주세요.');
+    }
+  } catch(e) {
+    // Demo
+    const item = allItems.find(i => i.id === itemId);
+    if (item && item.current >= item.max) {
+      showAlert('🚫', '이미 정원이 찬 항목입니다', '다른 항목을 선택해 주세요.');
       return;
     }
+    myApplied.add(itemId);
+    updateMyCount();
+    allItems = allItems.map(i => i.id === itemId ? {...i, current: i.current+1} : i);
+    filterItems();
+    showToast('✓ 신청이 완료되었습니다.', 'success');
   }
-
-  try {
-    const p = new URLSearchParams({ action: 'queryAnnouncement', id: annId, ...queryData });
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: p.toString()
-    });
-    const result = await res.json();
-    showResult(result, queryData);
-  } catch(e) {
-    // GAS 미연결 시 로컬 검색
-    const data = annInfo.data || [];
-    const found = data.find(row =>
-      idCols.every(field => String(row[field]).trim() === String(queryData[field]).trim())
-    );
-    showResult(found ? { found: true, data: found } : { found: false }, queryData);
-  }
-
-  btn.innerHTML = '조회';
-  btn.disabled = false;
 }
 
-function showResult(result, queryData) {
-  const resultCard = document.getElementById('resultCard');
-  const errorMsg  = document.getElementById('errorMsg');
-  resultCard.classList.remove('show');
-  errorMsg.classList.remove('show');
+// ============================================================
+// Queue System
+// ============================================================
+let queuePos = 0;
+let totalInQueue = 0;
 
-  if (result.found && result.data) {
-    const idCols     = getIdCols(annInfo);
-    const resultCols = getResultCols(annInfo);
+function startQueue(userCount) {
+  const overlay = document.getElementById('queueOverlay');
+  overlay.classList.add('active');
 
-    document.getElementById('resultName').textContent = result.data[idCols[0]] || '';
+  // Initialize queue position
+  queuePos = userCount;
+  totalInQueue = userCount + 1;
 
-    document.getElementById('resultItems').innerHTML = resultCols.map(field => `
-      <div class="result-item">
-        <div class="result-item-label">${field}</div>
-        <div class="result-item-value">${result.data[field] ?? '-'}</div>
-      </div>
-    `).join('');
+  updateQueueUI();
 
-    resultCard.classList.add('show');
-  } else {
-    errorMsg.classList.add('show');
-  }
+  queueInterval = setInterval(async () => {
+    try {
+      const p = new URLSearchParams({ action: 'checkQueue', applyId, userId: currentUser.id });
+      const res = await fetch(GAS_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: p.toString() });
+      const data = await res.json();
+      
+      if (data.canProceed) {
+        clearInterval(queueInterval);
+        overlay.classList.remove('active');
+        submitApply(pendingItemId);
+        pendingItemId = null;
+        return;
+      }
+      queuePos = data.position || Math.max(0, queuePos - 1);
+      totalInQueue = data.total || totalInQueue;
+    } catch(e) {
+      // Demo: simulate queue moving
+      queuePos = Math.max(0, queuePos - 1);
+    }
+
+    if (queuePos <= 0) {
+      clearInterval(queueInterval);
+      overlay.classList.remove('active');
+      submitApply(pendingItemId);
+      pendingItemId = null;
+      return;
+    }
+
+    updateQueueUI();
+  }, 2000);
+}
+
+function updateQueueUI() {
+  const pct = totalInQueue > 0 ? Math.round(((totalInQueue - queuePos) / totalInQueue) * 100) : 0;
+  const after = Math.max(0, Math.floor(Math.random() * 3));
+  const waitSec = queuePos * 2;
+  const waitStr = waitSec >= 60 ? `${Math.floor(waitSec/60)}분 ${waitSec%60}초` : `${waitSec}초`;
+
+  document.getElementById('queueProgressFill').style.width = pct + '%';
+  document.getElementById('queuePercent').textContent = `${pct}% (${totalInQueue-queuePos}/${totalInQueue})`;
+  document.getElementById('queueBefore').textContent = `${queuePos}명`;
+  document.getElementById('queueAfter').textContent = `${after}명`;
+  document.getElementById('queueTime').textContent = waitStr;
+}
+
+function cancelQueue() {
+  if (queueInterval) clearInterval(queueInterval);
+  document.getElementById('queueOverlay').classList.remove('active');
+  pendingItemId = null;
+}
+
+// ============================================================
+// UI utils
+// ============================================================
+function showAlert(icon, msg, sub) {
+  document.getElementById('alertIcon').textContent = icon;
+  document.getElementById('alertMsg').textContent = msg;
+  document.getElementById('alertSub').textContent = sub || '';
+  document.getElementById('alertModal').classList.add('active');
+}
+function closeAlert() { document.getElementById('alertModal').classList.remove('active'); }
+document.getElementById('alertModal').addEventListener('click', function(e) { if(e.target===this) closeAlert(); });
+
+let toastTimer;
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
 }
 
 init();
