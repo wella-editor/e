@@ -161,17 +161,21 @@
 </div>
 
 <script>
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbytw_fPkzxAjbz-S0kQ-TePZmDe2optYw1kalpsXjw-yF-2WxNsGufmeg5o9qbYOfQA9g/exec';
+const GAS_URL = 'YOUR_GAS_URL_HERE';
 const params = new URLSearchParams(window.location.search);
 const annId = params.get('id');
 
-// Mock data for demo
+// Mock data - cols 구조 통일 (type: 'id'=식별자, 'result'=결과, 'normal'=일반)
 const mockAnnouncements = {
   1: {
     id: 1, title: '2026 반편성 발표',
     startDate: '2026-02-21 15:00', endDate: '2026-02-22 17:00',
-    identifiers: ['이름', '생년월일(6자리)'],
-    resultFields: ['반', '번호'],
+    cols: [
+      { name: '이름', type: 'id' },
+      { name: '생년월일(6자리)', type: 'id' },
+      { name: '반', type: 'result' },
+      { name: '번호', type: 'result' }
+    ],
     data: [
       { '이름': '홍길동', '생년월일(6자리)': '110305', '반': '8', '번호': '21' },
       { '이름': '김진경', '생년월일(6자리)': '120201', '반': '2', '번호': '31' },
@@ -182,25 +186,48 @@ const mockAnnouncements = {
 
 let annInfo = null;
 
+// cols에서 식별자/결과 컬럼 추출 헬퍼
+function getIdCols(info)     { return (info.cols || []).filter(c => c.type === 'id').map(c => c.name); }
+function getResultCols(info) { return (info.cols || []).filter(c => c.type === 'result').map(c => c.name); }
+
 async function init() {
   try {
     const p = new URLSearchParams({ action: 'getAnnouncementDetail', id: annId });
-    const res = await fetch(GAS_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: p.toString() });
-    annInfo = await res.json();
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: p.toString()
+    });
+    const json = await res.json();
+    // GAS에서 cols가 문자열로 올 경우 파싱
+    if (json && json.title) {
+      annInfo = json;
+      if (typeof annInfo.cols === 'string') annInfo.cols = JSON.parse(annInfo.cols);
+      if (typeof annInfo.data === 'string') annInfo.data = JSON.parse(annInfo.data);
+    } else {
+      throw new Error('no data');
+    }
   } catch(e) {
+    // GAS 미연결 시 mock 사용
     annInfo = mockAnnouncements[annId] || mockAnnouncements[1];
+  }
+
+  if (!annInfo || !annInfo.cols) {
+    document.getElementById('annTitle').textContent = '발표 정보를 불러올 수 없습니다.';
+    return;
   }
 
   document.getElementById('headerTitle').textContent = annInfo.title;
   document.getElementById('annTitle').textContent = annInfo.title;
   document.getElementById('annPeriod').textContent = `발표 기간: ${annInfo.startDate} ~ ${annInfo.endDate}`;
 
-  // Build query fields
+  // 식별자 컬럼으로 입력 폼 생성
+  const idCols = getIdCols(annInfo);
   const fieldsEl = document.getElementById('queryFields');
-  fieldsEl.innerHTML = annInfo.identifiers.map(field => `
+  fieldsEl.innerHTML = idCols.map(field => `
     <div class="field-row">
       <label class="field-label">${field}</label>
-      <input class="field-input" type="text" id="field_${field}" placeholder="${field} 입력" autocomplete="off">
+      <input class="field-input" type="text" id="field_${CSS.escape(field)}" placeholder="${field} 입력" autocomplete="off">
     </div>
   `).join('');
 }
@@ -210,12 +237,14 @@ async function doQuery() {
   btn.innerHTML = '<span class="spinner-inline"></span>조회 중...';
   btn.disabled = true;
 
+  const idCols = getIdCols(annInfo);
   const queryData = {};
-  annInfo.identifiers.forEach(field => {
-    queryData[field] = document.getElementById(`field_${field}`).value.trim();
+  idCols.forEach(field => {
+    const el = document.getElementById(`field_${CSS.escape(field)}`);
+    queryData[field] = el ? el.value.trim() : '';
   });
 
-  // Validate
+  // 빈 값 체크
   for (const [k, v] of Object.entries(queryData)) {
     if (!v) {
       alert(`${k}을(를) 입력해 주세요.`);
@@ -227,14 +256,19 @@ async function doQuery() {
 
   try {
     const p = new URLSearchParams({ action: 'queryAnnouncement', id: annId, ...queryData });
-    const res = await fetch(GAS_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: p.toString() });
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: p.toString()
+    });
     const result = await res.json();
     showResult(result, queryData);
   } catch(e) {
-    // Demo: local search
-    const found = annInfo.data?.find(row => {
-      return annInfo.identifiers.every(field => row[field] === queryData[field]);
-    });
+    // GAS 미연결 시 로컬 검색
+    const data = annInfo.data || [];
+    const found = data.find(row =>
+      idCols.every(field => String(row[field]).trim() === String(queryData[field]).trim())
+    );
     showResult(found ? { found: true, data: found } : { found: false }, queryData);
   }
 
@@ -244,19 +278,23 @@ async function doQuery() {
 
 function showResult(result, queryData) {
   const resultCard = document.getElementById('resultCard');
-  const errorMsg = document.getElementById('errorMsg');
+  const errorMsg  = document.getElementById('errorMsg');
   resultCard.classList.remove('show');
   errorMsg.classList.remove('show');
 
   if (result.found && result.data) {
-    document.getElementById('resultName').textContent = result.data[annInfo.identifiers[0]] || '';
-    const itemsEl = document.getElementById('resultItems');
-    itemsEl.innerHTML = annInfo.resultFields.map(field => `
+    const idCols     = getIdCols(annInfo);
+    const resultCols = getResultCols(annInfo);
+
+    document.getElementById('resultName').textContent = result.data[idCols[0]] || '';
+
+    document.getElementById('resultItems').innerHTML = resultCols.map(field => `
       <div class="result-item">
         <div class="result-item-label">${field}</div>
-        <div class="result-item-value">${result.data[field] || '-'}</div>
+        <div class="result-item-value">${result.data[field] ?? '-'}</div>
       </div>
     `).join('');
+
     resultCard.classList.add('show');
   } else {
     errorMsg.classList.add('show');
