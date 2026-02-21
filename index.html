@@ -1,1 +1,443 @@
-WELLA, aka Logics4me
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>온라인 시스템</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #1a4fa0;
+    --primary-light: #2563cc;
+    --primary-dark: #0f3070;
+    --accent: #e8f0fe;
+    --text: #1a1a2e;
+    --text-muted: #6b7280;
+    --border: #dde3ef;
+    --white: #ffffff;
+    --bg: #f4f6fb;
+    --shadow: 0 2px 12px rgba(26,79,160,0.10);
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Header */
+  header {
+    background: var(--primary);
+    color: white;
+    padding: 0 24px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .header-title {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+
+  /* Main */
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 60px 24px;
+  }
+
+  .welcome-section {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  .welcome-badge {
+    display: inline-block;
+    background: var(--accent);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 14px;
+    border-radius: 20px;
+    margin-bottom: 16px;
+    letter-spacing: 0.5px;
+  }
+  .welcome-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--primary-dark);
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+  }
+  .welcome-sub {
+    font-size: 15px;
+    color: var(--text-muted);
+  }
+
+  /* Menu List */
+  .menu-list {
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .menu-item {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    padding: 20px 24px;
+    text-decoration: none;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.18s ease;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+  }
+  .menu-item::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--primary);
+    border-radius: 0 2px 2px 0;
+  }
+  .menu-item:hover {
+    border-color: var(--primary);
+    transform: translateX(4px);
+    box-shadow: 0 4px 18px rgba(26,79,160,0.18);
+  }
+  .menu-icon {
+    width: 44px;
+    height: 44px;
+    background: var(--accent);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 18px;
+    flex-shrink: 0;
+  }
+  .menu-icon svg { width: 22px; height: 22px; color: var(--primary); }
+  .menu-text { flex: 1; }
+  .menu-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 3px;
+  }
+  .menu-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .menu-arrow {
+    color: var(--primary);
+    opacity: 0.5;
+    transition: opacity 0.15s, transform 0.15s;
+  }
+  .menu-item:hover .menu-arrow { opacity: 1; transform: translateX(3px); }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 24px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* Admin Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: white;
+    border-radius: 14px;
+    padding: 36px 32px;
+    width: 90%;
+    max-width: 380px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    animation: modalIn 0.25s ease;
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.92) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary-dark);
+    text-align: center;
+    margin-bottom: 6px;
+  }
+  .modal-subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .pin-inputs {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+  .pin-input {
+    width: 48px;
+    height: 56px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    font-size: 22px;
+    font-weight: 700;
+    text-align: center;
+    color: var(--primary);
+    outline: none;
+    transition: border-color 0.15s;
+    font-family: 'Noto Sans KR', monospace;
+  }
+  .pin-input:focus { border-color: var(--primary); }
+  .pin-input.filled { border-color: var(--primary-light); background: var(--accent); }
+  .pin-error {
+    font-size: 13px;
+    color: #ef4444;
+    text-align: center;
+    height: 20px;
+    margin-bottom: 16px;
+  }
+  .modal-btn {
+    width: 100%;
+    padding: 13px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif;
+    transition: background 0.15s;
+  }
+  .modal-btn:hover { background: var(--primary-dark); }
+  .modal-cancel {
+    width: 100%;
+    padding: 10px;
+    background: none;
+    color: var(--text-muted);
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 10px;
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+  .modal-cancel:hover { color: var(--text); }
+
+  /* Home key indicator */
+  .home-hint {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: transparent;
+    transition: background 0.3s;
+  }
+  .home-hint.blink { background: var(--primary); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-title">🏫 온라인 시스템</div>
+</header>
+
+<main>
+  <div class="welcome-section">
+    <div class="welcome-badge">ONLINE SERVICE</div>
+    <h1 class="welcome-title">온라인 서비스</h1>
+    <p class="welcome-sub">원하시는 서비스를 선택해 주세요</p>
+  </div>
+
+  <nav class="menu-list">
+    <a class="menu-item" href="announcement.html">
+      <div class="menu-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+          <rect x="9" y="3" width="6" height="4" rx="1"/>
+          <line x1="9" y1="12" x2="15" y2="12"/>
+          <line x1="9" y1="16" x2="13" y2="16"/>
+        </svg>
+      </div>
+      <div class="menu-text">
+        <div class="menu-name">발표 조회</div>
+        <div class="menu-desc">합격자 발표, 성적 발표 등 조회</div>
+      </div>
+      <div class="menu-arrow">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </div>
+    </a>
+
+    <a class="menu-item" href="apply.html">
+      <div class="menu-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+      </div>
+      <div class="menu-text">
+        <div class="menu-name">온라인 신청</div>
+        <div class="menu-desc">수강신청, 동아리 신청 등 온라인 신청</div>
+      </div>
+      <div class="menu-arrow">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </div>
+    </a>
+  </nav>
+</main>
+
+<footer>
+  © 2026 온라인 시스템. All rights reserved.
+</footer>
+
+<!-- Admin Modal -->
+<div class="modal-overlay" id="adminModal">
+  <div class="modal">
+    <div class="modal-title">🔐 관리자 인증</div>
+    <div class="modal-subtitle">5자리 관리자 비밀번호를 입력하세요</div>
+    <div class="pin-inputs" id="pinInputs">
+      <input class="pin-input" maxlength="1" type="text" data-index="0" autocomplete="off">
+      <input class="pin-input" maxlength="1" type="text" data-index="1" autocomplete="off">
+      <input class="pin-input" maxlength="1" type="text" data-index="2" autocomplete="off">
+      <input class="pin-input" maxlength="1" type="text" data-index="3" autocomplete="off">
+      <input class="pin-input" maxlength="1" type="text" data-index="4" autocomplete="off">
+    </div>
+    <div class="pin-error" id="pinError"></div>
+    <button class="modal-btn" onclick="verifyAdmin()">확인</button>
+    <button class="modal-cancel" onclick="closeAdminModal()">취소</button>
+  </div>
+</div>
+
+<div class="home-hint" id="homeHint"></div>
+
+<script>
+// ============================================================
+// Config
+// ============================================================
+const CONFIG = {
+  GAS_URL: 'YOUR_GAS_URL_HERE',
+  SITE_NAME: '온라인 시스템'
+};
+
+function getAdminPassword() {
+  const now = new Date();
+  const days = ['S','M','T','W','T','F','S'];
+  const dayChar = days[now.getDay()];
+  const month = String(now.getMonth()+1).padStart(2,'0');
+  const date = String(now.getDate()).padStart(2,'0');
+  return dayChar + month + date;
+}
+
+// ============================================================
+// HOME key detection (3초 내 5번)
+// ============================================================
+let homeKeyTimes = [];
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Home') {
+    const now = Date.now();
+    homeKeyTimes.push(now);
+    homeKeyTimes = homeKeyTimes.filter(t => now - t <= 3000);
+    
+    // Visual hint
+    const hint = document.getElementById('homeHint');
+    hint.classList.add('blink');
+    setTimeout(() => hint.classList.remove('blink'), 300);
+
+    if (homeKeyTimes.length >= 5) {
+      homeKeyTimes = [];
+      openAdminModal();
+    }
+  }
+});
+
+function openAdminModal() {
+  document.getElementById('adminModal').classList.add('active');
+  document.getElementById('pinError').textContent = '';
+  document.querySelectorAll('.pin-input').forEach(inp => {
+    inp.value = '';
+    inp.classList.remove('filled');
+  });
+  setTimeout(() => document.querySelector('.pin-input').focus(), 100);
+}
+
+function closeAdminModal() {
+  document.getElementById('adminModal').classList.remove('active');
+}
+
+// PIN input auto-focus
+document.querySelectorAll('.pin-input').forEach((inp, i, all) => {
+  inp.addEventListener('input', () => {
+    inp.value = inp.value.replace(/\s/g,'').toUpperCase();
+    if (inp.value) {
+      inp.classList.add('filled');
+      if (i < all.length - 1) all[i+1].focus();
+    } else {
+      inp.classList.remove('filled');
+    }
+  });
+  inp.addEventListener('keydown', (e) => {
+    if (e.key === 'Backspace' && !inp.value && i > 0) {
+      all[i-1].focus();
+      all[i-1].value = '';
+      all[i-1].classList.remove('filled');
+    }
+    if (e.key === 'Enter') verifyAdmin();
+  });
+});
+
+function verifyAdmin() {
+  const inputs = document.querySelectorAll('.pin-input');
+  const entered = Array.from(inputs).map(i => i.value).join('');
+  const correct = getAdminPassword();
+  
+  if (entered.toUpperCase() === correct.toUpperCase()) {
+    // Save admin session
+    sessionStorage.setItem('isAdmin', 'true');
+    sessionStorage.setItem('adminTime', Date.now());
+    closeAdminModal();
+    window.location.href = 'admin.html';
+  } else {
+    const errEl = document.getElementById('pinError');
+    errEl.textContent = '비밀번호가 올바르지 않습니다.';
+    inputs.forEach(inp => { inp.value=''; inp.classList.remove('filled'); });
+    inputs[0].focus();
+    setTimeout(() => errEl.textContent = '', 3000);
+  }
+}
+
+// Close on backdrop click
+document.getElementById('adminModal').addEventListener('click', function(e) {
+  if (e.target === this) closeAdminModal();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>발표 조회</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #1a4fa0;
+    --primary-light: #2563cc;
+    --primary-dark: #0f3070;
+    --accent: #e8f0fe;
+    --text: #1a1a2e;
+    --text-muted: #6b7280;
+    --border: #dde3ef;
+    --white: #ffffff;
+    --bg: #f4f6fb;
+    --shadow: 0 2px 12px rgba(26,79,160,0.10);
+    --radius: 10px;
+    --success: #16a34a;
+    --warning: #d97706;
+    --danger: #dc2626;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  header {
+    background: var(--primary);
+    color: white;
+    padding: 0 24px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .back-btn {
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: white;
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+    text-decoration: none;
+  }
+  .back-btn:hover { background: rgba(255,255,255,0.25); }
+  .header-title { font-size: 17px; font-weight: 700; color: white; }
+
+  .container { max-width: 800px; margin: 0 auto; padding: 24px 16px; }
+
+  /* Search bar */
+  .search-bar {
+    background: white;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+    flex-wrap: wrap;
+  }
+  .search-bar input[type="text"] {
+    flex: 1;
+    min-width: 160px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-family: 'Noto Sans KR', sans-serif;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .search-bar input:focus { border-color: var(--primary); }
+  .search-bar input[type="date"] {
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    outline: none;
+    color: var(--text);
+  }
+  .date-separator { font-size: 14px; color: var(--text-muted); }
+  .search-btn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+  .search-btn:hover { background: var(--primary-dark); }
+
+  /* Info bar */
+  .info-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+  .info-bar strong { color: var(--text); }
+
+  /* Table */
+  .table-wrap {
+    background: white;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    background: #f0f4fb;
+    padding: 13px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary-dark);
+    text-align: center;
+    border-bottom: 1.5px solid var(--border);
+  }
+  tbody tr { border-bottom: 1px solid #eef0f6; transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #f8faff; }
+  td {
+    padding: 14px 16px;
+    font-size: 14px;
+    text-align: center;
+    vertical-align: middle;
+  }
+  td.title { text-align: left; font-weight: 500; }
+  td.period { font-size: 13px; color: var(--text-muted); }
+
+  .view-btn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif;
+    transition: background 0.15s;
+  }
+  .view-btn:hover { background: var(--primary-dark); }
+  .view-btn.disabled {
+    background: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+  }
+
+  /* Status badges */
+  .status-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin-left: 6px;
+  }
+  .status-active { background: #dcfce7; color: var(--success); }
+  .status-upcoming { background: #fef3c7; color: var(--warning); }
+  .status-ended { background: #f3f4f6; color: #9ca3af; }
+
+  .empty-state {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 15px;
+  }
+  .empty-state svg { margin-bottom: 12px; opacity: 0.3; }
+
+  /* Loading */
+  .loading { text-align: center; padding: 40px; color: var(--text-muted); }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 1000;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: white; border-radius: 14px; padding: 32px 28px;
+    width: 90%; max-width: 360px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    animation: modalIn 0.2s ease;
+  }
+  @keyframes modalIn { from { opacity:0; transform:scale(0.92); } to { opacity:1; transform:scale(1); } }
+  .modal-icon { font-size: 40px; margin-bottom: 12px; }
+  .modal-msg { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .modal-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+  .modal-ok-btn {
+    background: var(--primary); color: white;
+    border: none; border-radius: 8px; padding: 11px 32px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+
+  @media (max-width: 600px) {
+    .search-bar { padding: 12px; gap: 8px; }
+    thead th:nth-child(3), td:nth-child(3) { display: none; }
+    td { padding: 12px 10px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="back-btn" href="index.html">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+  </a>
+  <div class="header-title">발표 조회</div>
+</header>
+
+<div class="container">
+  <div class="search-bar">
+    <input type="date" id="startDate">
+    <span class="date-separator">~</span>
+    <input type="date" id="endDate">
+    <input type="text" id="searchKeyword" placeholder="발표 제목 검색">
+    <button class="search-btn" onclick="loadAnnouncements()">🔍 검색</button>
+  </div>
+
+  <div class="info-bar">
+    <span>Total <strong id="totalCount">0</strong>건</span>
+    <span id="pageInfo">페이지 1 / 1</span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:50px">번호</th>
+          <th>발표목록</th>
+          <th>발표기간</th>
+          <th style="width:80px">관리</th>
+        </tr>
+      </thead>
+      <tbody id="announcementBody">
+        <tr><td colspan="4"><div class="loading"><div class="spinner"></div>불러오는 중...</div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Period Alert Modal -->
+<div class="modal-overlay" id="alertModal">
+  <div class="modal">
+    <div class="modal-icon">⚠️</div>
+    <div class="modal-msg" id="alertMsg">발표 기간이 아닙니다</div>
+    <div class="modal-sub" id="alertSub"></div>
+    <button class="modal-ok-btn" onclick="closeAlert()">확인</button>
+  </div>
+</div>
+
+<script>
+const GAS_URL = 'YOUR_GAS_URL_HERE';
+
+// Set default date range (current month)
+const now = new Date();
+const y = now.getFullYear();
+const m = String(now.getMonth()+1).padStart(2,'0');
+document.getElementById('startDate').value = `${y}-${m}-01`;
+document.getElementById('endDate').value = `${y}-${m}-${String(new Date(y,now.getMonth()+1,0).getDate()).padStart(2,'0')}`;
+
+async function loadAnnouncements() {
+  const body = document.getElementById('announcementBody');
+  body.innerHTML = '<tr><td colspan="4"><div class="loading"><div class="spinner"></div>불러오는 중...</div></td></tr>';
+  
+  const start = document.getElementById('startDate').value;
+  const end = document.getElementById('endDate').value;
+  const kw = document.getElementById('searchKeyword').value;
+
+  try {
+    const params = new URLSearchParams({ action: 'getAnnouncements', startDate: start, endDate: end, keyword: kw });
+    const res = await fetch(GAS_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: params.toString() });
+    const data = await res.json();
+    renderTable(data.items || []);
+  } catch(e) {
+    // Demo mode with mock data
+    renderTable(getMockData());
+  }
+}
+
+function getMockData() {
+  return [
+    { id: 1, title: '2026 반편성 발표', startDate: '2026-02-21 15:00', endDate: '2026-02-22 17:00' },
+    { id: 2, title: '2026 합격자 발표', startDate: '2026-02-25 15:00', endDate: '2026-02-27 17:00' },
+    { id: 3, title: '2025 성적 발표', startDate: '2025-12-25 15:00', endDate: '2025-12-27 17:00' },
+  ];
+}
+
+function getStatus(startDate, endDate) {
+  const now = new Date();
+  const s = new Date(startDate);
+  const e = new Date(endDate);
+  if (now >= s && now <= e) return 'active';
+  if (now < s) return 'upcoming';
+  return 'ended';
+}
+
+function formatPeriod(s, e) {
+  return s.replace('T',' ') + ' ~ ' + e.replace('T',' ');
+}
+
+function renderTable(items) {
+  const body = document.getElementById('announcementBody');
+  document.getElementById('totalCount').textContent = items.length;
+  
+  if (!items.length) {
+    body.innerHTML = '<tr><td colspan="4"><div class="empty-state"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><br>조회가능한 발표가 없습니다.</div></td></tr>';
+    return;
+  }
+
+  body.innerHTML = items.map((item, idx) => {
+    const status = getStatus(item.startDate, item.endDate);
+    const statusLabel = status === 'active' ? '<span class="status-badge status-active">진행중</span>' :
+                        status === 'upcoming' ? '<span class="status-badge status-upcoming">예정</span>' :
+                        '<span class="status-badge status-ended">종료</span>';
+    const btnClass = status === 'active' ? 'view-btn' : 'view-btn disabled';
+    const btnClick = status === 'active' 
+      ? `onclick="goView(${item.id})"` 
+      : `onclick="showAlert('${item.title}', '${item.startDate}', '${item.endDate}', '${status}')"`;
+
+    return `<tr>
+      <td>${idx+1}</td>
+      <td class="title">${item.title}${statusLabel}</td>
+      <td class="period">${formatPeriod(item.startDate, item.endDate)}</td>
+      <td><button class="${btnClass}" ${btnClick}>조회</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function goView(id) {
+  window.location.href = `announcement-detail.html?id=${id}`;
+}
+
+function showAlert(title, start, end, status) {
+  const msg = document.getElementById('alertMsg');
+  const sub = document.getElementById('alertSub');
+  if (status === 'ended') {
+    msg.textContent = '발표 기간이 종료되었습니다';
+    sub.textContent = `발표 기간: ${formatPeriod(start, end)}`;
+  } else {
+    msg.textContent = '발표 기간이 아닙니다';
+    sub.textContent = `발표 기간: ${formatPeriod(start, end)}`;
+  }
+  document.getElementById('alertModal').classList.add('active');
+}
+
+function closeAlert() {
+  document.getElementById('alertModal').classList.remove('active');
+}
+document.getElementById('alertModal').addEventListener('click', function(e) {
+  if (e.target === this) closeAlert();
+});
+
+// Init
+loadAnnouncements();
+</script>
+</body>
+</html>
