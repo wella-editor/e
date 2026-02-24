@@ -209,6 +209,9 @@
       <button class="sidebar-btn" onclick="showPage('users')" id="sb-users">
         <span class="sidebar-icon">👥</span> 회원 관리
       </button>
+      <button class="sidebar-btn" onclick="showPage('groups')" id="sb-groups">
+        <span class="sidebar-icon">🏷️</span> 그룹 관리
+      </button>
     </div>
   </aside>
 
@@ -275,6 +278,22 @@
           <thead><tr><th>아이디</th><th>이름</th><th>그룹</th><th>학번</th><th>가입일</th><th style="width:90px">관리</th></tr></thead>
           <tbody id="userTable"><tr><td colspan="6" class="empty-td">불러오는 중...</td></tr></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- 그룹 관리 페이지 -->
+    <div class="page" id="page-groups">
+      <div class="page-header">
+        <div>
+          <div class="page-title">🏷️ 그룹 관리</div>
+          <div class="page-sub">그룹 카테고리와 그룹명을 자유롭게 추가/삭제할 수 있습니다.</div>
+        </div>
+        <button class="btn btn-primary" onclick="addGroupCategory()">+ 카테고리 추가</button>
+      </div>
+      <div id="groupDefsEditor" style="display:flex;flex-direction:column;gap:16px"></div>
+      <div style="margin-top:20px;display:flex;gap:10px">
+        <button class="btn btn-primary" onclick="saveGroupDefsUI()">💾 저장</button>
+        <p style="font-size:13px;color:var(--text-muted);align-self:center">저장하면 신청 생성 시 그룹 목록에 반영됩니다.</p>
       </div>
     </div>
 
@@ -388,9 +407,7 @@
         <div class="form-group">
           <label class="form-label">신청 가능 그룹</label>
           <div style="display:flex;flex-wrap:wrap;gap:8px;padding-top:4px" id="groupCheckboxes">
-            <label style="display:flex;align-items:center;gap:5px;font-size:14px;cursor:pointer"><input type="checkbox" value="1학년" checked> 1학년</label>
-            <label style="display:flex;align-items:center;gap:5px;font-size:14px;cursor:pointer"><input type="checkbox" value="2학년" checked> 2학년</label>
-            <label style="display:flex;align-items:center;gap:5px;font-size:14px;cursor:pointer"><input type="checkbox" value="3학년" checked> 3학년</label>
+            <span style="font-size:13px;color:var(--text-muted)">그룹 로드 중...</span>
           </div>
         </div>
       </div>
@@ -439,7 +456,7 @@
 /* ============================================================
    설정 — GAS URL을 여기에 입력하세요
 ============================================================ */
-const GAS_URL   = 'https://script.google.com/macros/s/AKfycbytw_fPkzxAjbz-S0kQ-TePZmDe2optYw1kalpsXjw-yF-2WxNsGufmeg5o9qbYOfQA9g/exec';
+const GAS_URL   = 'https://script.google.com/macros/s/AKfycbwNBYd4UhL2x8GlhLDkJwqbI_D0JE51InOyfckQ8fZz5gGYNH2HnG9tCTyYxn6SLf51Eg/exec';
 const GAS_READY = true;
 
 // 관리자 인증 확인
@@ -473,6 +490,7 @@ function showPage(name) {
   if (name === 'announcements') loadAnnouncements();
   if (name === 'applyList')     loadApplyList();
   if (name === 'users')         loadUsers();
+  if (name === 'groups')        loadGroups();
 }
 
 /* ============================================================
@@ -815,7 +833,7 @@ function renderApplyTable(list) {
 ============================================================ */
 let applyItems = [];
 
-function openApplyDrawer(ap) {
+function _origOpenApplyDrawer(ap) {
   document.getElementById('editApplyId').value            = ap?.id || '';
   document.getElementById('applyDrawerTitle').textContent = ap ? '📝 신청 수정' : '📝 신청 생성';
   document.getElementById('applyTitle').value             = ap?.title || '';
@@ -1008,10 +1026,149 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 });
 
 /* ============================================================
+   그룹 관리
+============================================================ */
+let groupDefs = {};   // { 학년: ['1학년','2학년',...], 성별: ['남학생','여학생'], ... }
+
+async function loadGroupDefs() {
+  if (!GAS_READY) {
+    // 기본 그룹
+    groupDefs = { 학년: ['1학년','2학년','3학년'], 성별: ['남학생','여학생'] };
+    return;
+  }
+  try {
+    const res = await gasCall('getGroupDefs', {});
+    groupDefs = res.groups || { 학년: ['1학년','2학년','3학년'] };
+  } catch (e) {
+    groupDefs = { 학년: ['1학년','2학년','3학년'] };
+  }
+}
+
+function getAllGroupNames() {
+  return Object.values(groupDefs).flat();
+}
+
+// 신청 드로어 체크박스를 동적 그룹으로 렌더링
+function renderGroupCheckboxes(selectedGroups) {
+  const wrap = document.getElementById('groupCheckboxes');
+  const allGroups = getAllGroupNames();
+  if (!allGroups.length) {
+    wrap.innerHTML = '<span style="font-size:13px;color:var(--text-muted)">그룹이 없습니다. 그룹 관리에서 추가하세요.</span>';
+    return;
+  }
+  // 카테고리별로 섹션 구분
+  let html = '';
+  Object.entries(groupDefs).forEach(([cat, names]) => {
+    html += `<div style="width:100%;font-size:11px;font-weight:700;color:var(--text-muted);margin-top:8px;margin-bottom:2px">${cat}</div>`;
+    names.forEach(name => {
+      const checked = !selectedGroups || selectedGroups.includes(name) ? 'checked' : '';
+      html += `<label style="display:flex;align-items:center;gap:5px;font-size:14px;cursor:pointer">
+        <input type="checkbox" value="${name}" ${checked}> ${name}</label>`;
+    });
+  });
+  wrap.innerHTML = html;
+}
+
+// 그룹 관리 페이지 렌더링
+function loadGroups() {
+  renderGroupDefsEditor();
+}
+
+function renderGroupDefsEditor() {
+  const editor = document.getElementById('groupDefsEditor');
+  editor.innerHTML = Object.entries(groupDefs).map(([cat, names], ci) => `
+    <div style="background:white;border-radius:10px;border:1.5px solid var(--border);padding:20px;box-shadow:var(--shadow)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <input type="text" value="${cat}"
+               id="cat_${ci}"
+               style="font-size:15px;font-weight:700;border:1.5px solid var(--border);border-radius:6px;padding:6px 10px;outline:none;font-family:inherit"
+               placeholder="카테고리명 (예: 학년, 성별)">
+        <button class="btn btn-sm btn-danger" onclick="removeCategory(${ci})" style="margin-left:auto">카테고리 삭제</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center" id="catItems_${ci}">
+        ${names.map((name, ni) => `
+          <div style="display:flex;align-items:center;gap:4px;background:var(--accent);border-radius:20px;padding:5px 10px">
+            <input type="text" value="${name}" id="catItem_${ci}_${ni}"
+                   style="border:none;background:transparent;font-size:13px;font-family:inherit;outline:none;width:${Math.max(40, name.length*12)}px">
+            <button onclick="removeGroupItem(${ci},${ni})"
+                    style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:14px;padding:0 2px">✕</button>
+          </div>`).join('')}
+        <button class="btn btn-sm btn-outline" onclick="addGroupItem(${ci})">+ 추가</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function addGroupCategory() {
+  groupDefs['새 카테고리'] = [];
+  renderGroupDefsEditor();
+}
+
+function removeCategory(ci) {
+  const keys = Object.keys(groupDefs);
+  delete groupDefs[keys[ci]];
+  renderGroupDefsEditor();
+}
+
+function addGroupItem(ci) {
+  const keys = Object.keys(groupDefs);
+  groupDefs[keys[ci]].push('새 그룹');
+  renderGroupDefsEditor();
+}
+
+function removeGroupItem(ci, ni) {
+  const keys = Object.keys(groupDefs);
+  groupDefs[keys[ci]].splice(ni, 1);
+  renderGroupDefsEditor();
+}
+
+function collectGroupDefs() {
+  const newDefs = {};
+  const catInputs = document.querySelectorAll('[id^="cat_"]');
+  catInputs.forEach((catInput, ci) => {
+    const catName = catInput.value.trim();
+    if (!catName) return;
+    const itemInputs = document.querySelectorAll(`[id^="catItem_${ci}_"]`);
+    const names = Array.from(itemInputs).map(inp => inp.value.trim()).filter(Boolean);
+    newDefs[catName] = names;
+  });
+  return newDefs;
+}
+
+async function saveGroupDefsUI() {
+  groupDefs = collectGroupDefs();
+  if (!GAS_READY) {
+    showToast('그룹이 저장되었습니다. (GAS 연결 후 영구 저장됩니다)', 'success');
+    renderGroupDefsEditor();
+    return;
+  }
+  try {
+    await gasCall('saveGroupDefs', { groups: JSON.stringify(groupDefs) });
+    showToast('그룹이 저장되었습니다.', 'success');
+    renderGroupDefsEditor();
+  } catch (e) {
+    showToast('저장 실패: ' + e.message, 'error');
+  }
+}
+
+// openApplyDrawer — 동적 그룹 체크박스 포함
+function openApplyDrawer(ap) {
+  _origOpenApplyDrawer(ap);
+  renderGroupCheckboxes(ap?.groups || ap?.allowedGroups || getAllGroupNames());
+}
+
+/* ============================================================
+   showPage에 groups 추가
+============================================================ */
+
+
+/* ============================================================
    초기 실행
 ============================================================ */
 if (!GAS_READY) showGasWarning();
-loadDashboard();
+loadGroupDefs().then(() => {
+  loadDashboard();
+});
 </script>
 </body>
 </html>
