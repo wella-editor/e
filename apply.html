@@ -285,11 +285,38 @@
   </div>
 </div>
 
+
 <script>
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbytw_fPkzxAjbz-S0kQ-TePZmDe2optYw1kalpsXjw-yF-2WxNsGufmeg5o9qbYOfQA9g/exec';
+/* ============================================================
+   설정 — GAS URL을 여기에 입력하세요
+============================================================ */
+const GAS_URL   = 'https://script.google.com/macros/s/AKfycbwNBYd4UhL2x8GlhLDkJwqbI_D0JE51InOyfckQ8fZz5gGYNH2HnG9tCTyYxn6SLf51Eg/exec';
+const GAS_READY = true;
+
 let currentUser = null;
 
-// Init
+/* ============================================================
+   GAS 공통 호출
+============================================================ */
+async function gasCall(action, params = {}) {
+  const body = new URLSearchParams({ action, ...params });
+  const res  = await fetch(GAS_URL, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body:    body.toString()
+  });
+  const json = await res.json();
+  return json;
+}
+
+function parseField(val) {
+  if (!val || typeof val !== 'string') return val;
+  try { return JSON.parse(val); } catch { return val; }
+}
+
+/* ============================================================
+   초기화
+============================================================ */
 function init() {
   const saved = sessionStorage.getItem('applyUser');
   if (saved) {
@@ -299,131 +326,193 @@ function init() {
 }
 
 function switchTab(tab) {
-  document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (i===0)===(tab==='login')));
-  document.getElementById('loginForm').style.display = tab === 'login' ? 'flex' : 'none';
+  document.querySelectorAll('.auth-tab').forEach((t, i) =>
+    t.classList.toggle('active', (i === 0) === (tab === 'login')));
+  document.getElementById('loginForm').style.display    = tab === 'login'    ? 'flex' : 'none';
   document.getElementById('registerForm').style.display = tab === 'register' ? 'flex' : 'none';
 }
 
+/* ============================================================
+   로그인
+============================================================ */
 async function doLogin() {
   const id = document.getElementById('loginId').value.trim();
   const pw = document.getElementById('loginPw').value;
-  if (!id || !pw) { document.getElementById('loginError').textContent = '아이디와 비밀번호를 입력하세요.'; return; }
-  
-  try {
-    const p = new URLSearchParams({ action: 'login', userId: id, password: pw });
-    const res = await fetch(GAS_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: p.toString() });
-    const data = await res.json();
-    if (data.success) {
-      currentUser = data.user;
-      sessionStorage.setItem('applyUser', JSON.stringify(currentUser));
-      showListSection();
-    } else {
-      document.getElementById('loginError').textContent = data.message || '로그인에 실패했습니다.';
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+
+  if (!id || !pw) { errEl.textContent = '아이디와 비밀번호를 입력하세요.'; return; }
+
+  if (GAS_READY) {
+    try {
+      const data = await gasCall('login', { userId: id, password: pw });
+      if (data.success) {
+        currentUser = data.user;
+        sessionStorage.setItem('applyUser', JSON.stringify(currentUser));
+        showListSection();
+        return;
+      } else {
+        errEl.textContent = data.message || '로그인에 실패했습니다.';
+        return;
+      }
+    } catch (e) {
+      errEl.textContent = '서버 연결 오류가 발생했습니다.';
+      return;
     }
-  } catch(e) {
-    // Demo login
-    if (id === 'demo' && pw === '1234') {
-      currentUser = { id: 'demo', name: '홍길동', group: '1학년', studentId: '2601001' };
-      sessionStorage.setItem('applyUser', JSON.stringify(currentUser));
-      showListSection();
-    } else {
-      document.getElementById('loginError').textContent = '아이디 또는 비밀번호가 올바르지 않습니다. (데모: demo / 1234)';
-    }
+  }
+
+  /* GAS 미연결 — 데모 계정만 허용 */
+  if (id === 'demo' && pw === '1234') {
+    currentUser = { id: 'demo', name: '홍길동', group: '1학년', studentId: '2601001' };
+    sessionStorage.setItem('applyUser', JSON.stringify(currentUser));
+    showListSection();
+  } else {
+    errEl.textContent = 'GAS URL 미설정 상태입니다. 데모 계정: demo / 1234';
   }
 }
 
+/* ============================================================
+   회원가입
+============================================================ */
 async function doRegister() {
-  const name = document.getElementById('regName').value.trim();
-  const id = document.getElementById('regId').value.trim();
-  const pw = document.getElementById('regPw').value;
-  const group = document.getElementById('regGroup').value;
+  const name      = document.getElementById('regName').value.trim();
+  const id        = document.getElementById('regId').value.trim();
+  const pw        = document.getElementById('regPw').value;
+  const group     = document.getElementById('regGroup').value;
   const studentId = document.getElementById('regStudentId').value.trim();
+  const errEl     = document.getElementById('regError');
+  errEl.textContent = '';
 
   if (!name || !id || !pw || !group || !studentId) {
-    document.getElementById('regError').textContent = '모든 항목을 입력해 주세요.'; return;
+    errEl.textContent = '모든 항목을 입력해 주세요.'; return;
+  }
+
+  if (!GAS_READY) {
+    errEl.textContent = 'GAS URL을 설정해야 회원가입이 가능합니다.'; return;
   }
 
   try {
-    const p = new URLSearchParams({ action: 'register', name, userId: id, password: pw, group, studentId });
-    const res = await fetch(GAS_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: p.toString() });
-    const data = await res.json();
+    const data = await gasCall('register', { name, userId: id, password: pw, group, studentId });
     if (data.success) {
       showAlert('✅', '회원가입 완료', '로그인 탭에서 로그인해 주세요.');
       switchTab('login');
     } else {
-      document.getElementById('regError').textContent = data.message || '회원가입에 실패했습니다.';
+      errEl.textContent = data.message || '회원가입에 실패했습니다.';
     }
-  } catch(e) {
-    document.getElementById('regError').textContent = '서버 연결 오류. GAS URL을 설정해 주세요.';
+  } catch (e) {
+    errEl.textContent = '서버 연결 오류가 발생했습니다.';
   }
 }
 
+/* ============================================================
+   목록 섹션 표시
+============================================================ */
 function showListSection() {
-  document.getElementById('authSection').style.display = 'none';
-  document.getElementById('listSection').style.display = 'block';
-  document.getElementById('headerUser').style.display = 'inline';
-  document.getElementById('logoutBtn').style.display = 'inline';
-  document.getElementById('headerUser').textContent = currentUser.name;
-  document.getElementById('userName').textContent = `${currentUser.name} (${currentUser.studentId || currentUser.id})`;
-  document.getElementById('userGroup').textContent = currentUser.group;
+  document.getElementById('authSection').style.display  = 'none';
+  document.getElementById('listSection').style.display  = 'block';
+  document.getElementById('headerUser').style.display   = 'inline';
+  document.getElementById('logoutBtn').style.display    = 'inline';
+  document.getElementById('headerUser').textContent     = currentUser.name;
+  document.getElementById('userName').textContent       = `${currentUser.name} (${currentUser.studentId || currentUser.id})`;
+  document.getElementById('userGroup').textContent      = currentUser.group;
 
+  /* 기본 날짜 범위 = 이번 달 */
   const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth()+1).padStart(2,'0');
+  const y   = now.getFullYear();
+  const m   = String(now.getMonth() + 1).padStart(2, '0');
+  const lastDay = new Date(y, now.getMonth() + 1, 0).getDate();
   document.getElementById('startDate').value = `${y}-${m}-01`;
-  document.getElementById('endDate').value = `${y}-${m}-${String(new Date(y,now.getMonth()+1,0).getDate()).padStart(2,'0')}`;
+  document.getElementById('endDate').value   = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
 
   loadApplyList();
 }
 
 function logout() {
   sessionStorage.removeItem('applyUser');
+  sessionStorage.removeItem('applyList');
   currentUser = null;
-  document.getElementById('authSection').style.display = 'block';
-  document.getElementById('listSection').style.display = 'none';
-  document.getElementById('headerUser').style.display = 'none';
-  document.getElementById('logoutBtn').style.display = 'none';
+  document.getElementById('authSection').style.display  = 'block';
+  document.getElementById('listSection').style.display  = 'none';
+  document.getElementById('headerUser').style.display   = 'none';
+  document.getElementById('logoutBtn').style.display    = 'none';
 }
 
+/* ============================================================
+   신청 목록 로드
+============================================================ */
 async function loadApplyList() {
   const body = document.getElementById('applyBody');
   body.innerHTML = '<tr><td colspan="4"><div class="loading"><div class="spinner"></div>불러오는 중...</div></td></tr>';
 
   const start = document.getElementById('startDate').value;
-  const end = document.getElementById('endDate').value;
-  const kw = document.getElementById('searchKeyword').value;
+  const end   = document.getElementById('endDate').value;
+  const kw    = document.getElementById('searchKeyword').value;
 
-  try {
-    const p = new URLSearchParams({ action: 'getApplyList', startDate: start, endDate: end, keyword: kw, userGroup: currentUser.group });
-    const res = await fetch(GAS_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: p.toString() });
-    const data = await res.json();
-    renderApplyTable(data.items || []);
-  } catch(e) {
-    renderApplyTable(getMockApplyData());
+  if (GAS_READY) {
+    try {
+      const userGroups = currentUser.groups && currentUser.groups.length ? currentUser.groups : [currentUser.group];
+      const data = await gasCall('getApplyList', {
+        startDate: start, endDate: end, keyword: kw,
+        userGroups: JSON.stringify(userGroups),
+        userGroup:  currentUser.group
+      });
+
+      let items = data.items || [];
+
+      /* GAS에서 JSON 문자열로 오는 필드 파싱 */
+      items = items.map(a => ({
+        ...a,
+        groups:        parseField(a.groups)        || [],
+        allowedGroups: parseField(a.allowedGroups) || parseField(a.groups) || [],
+        items:         parseField(a.items)          || []
+      }));
+
+      /* apply-detail에서 쓸 수 있도록 sessionStorage에 캐시 */
+      sessionStorage.setItem('applyList', JSON.stringify(items));
+
+      document.getElementById('totalCount').textContent = items.length;
+      renderApplyTable(items);
+      return;
+    } catch (e) {
+      console.error('GAS 오류:', e);
+      body.innerHTML = `<tr><td colspan="4"><div class="empty-state" style="color:#dc2626">
+        서버 오류: ${e.message}<br><small>GAS URL과 배포 설정을 확인하세요.</small>
+      </div></td></tr>`;
+      return;
+    }
   }
-}
 
-function getMockApplyData() {
-  return [
-    { id: 1, title: '2026 수강신청', startDate: '2026-02-21 15:00', endDate: '2026-02-22 17:00', allowedGroups: ['1학년','2학년','3학년'], maxPerUser: 5 },
-    { id: 2, title: '2026 동아리 신청', startDate: '2026-02-25 15:00', endDate: '2026-02-27 17:00', allowedGroups: ['1학년','2학년'], maxPerUser: 1 },
+  /* GAS 미연결 — 데모 데이터 */
+  const mockItems = [
+    { id: '1', title: '2026 수강신청',  startDate: '2026-02-21 15:00', endDate: '2026-02-22 17:00',
+      allowedGroups: ['1학년','2학년','3학년'], groups: ['1학년','2학년','3학년'], maxPerUser: 5 },
+    { id: '2', title: '2026 동아리 신청', startDate: '2026-02-25 15:00', endDate: '2026-02-27 17:00',
+      allowedGroups: ['1학년','2학년'], groups: ['1학년','2학년'], maxPerUser: 1 }
   ];
+  sessionStorage.setItem('applyList', JSON.stringify(mockItems));
+  document.getElementById('totalCount').textContent = mockItems.length;
+  renderApplyTable(mockItems);
 }
 
+/* ============================================================
+   상태 계산
+============================================================ */
 function getStatus(startDate, endDate) {
-  const now = new Date();
-  const s = new Date(startDate);
-  const e = new Date(endDate);
+  const now          = new Date();
+  const s            = new Date(startDate);
+  const e            = new Date(endDate);
   const fiveMinBefore = new Date(s.getTime() - 5 * 60 * 1000);
-  if (now >= s && now <= e) return 'active';
+  if (now >= s && now <= e)            return 'active';
   if (now >= fiveMinBefore && now < s) return 'soon';
-  if (now < s) return 'upcoming';
+  if (now < s)                          return 'upcoming';
   return 'ended';
 }
 
+/* ============================================================
+   신청 목록 렌더링
+============================================================ */
 function renderApplyTable(items) {
   const body = document.getElementById('applyBody');
-  document.getElementById('totalCount').textContent = items.length;
 
   if (!items.length) {
     body.innerHTML = '<tr><td colspan="4"><div class="empty-state">조회가능한 신청이 없습니다.</div></td></tr>';
@@ -431,30 +520,44 @@ function renderApplyTable(items) {
   }
 
   body.innerHTML = items.map((item, idx) => {
-    const status = getStatus(item.startDate, item.endDate);
-    const isAllowed = !item.allowedGroups || item.allowedGroups.includes(currentUser.group);
-    
-    const statusLabel = status === 'active' ? '<span class="status-badge status-active">진행중</span>' :
-                        status === 'soon' ? '<span class="status-badge status-soon">5분 전</span>' :
-                        status === 'upcoming' ? '<span class="status-badge status-upcoming">예정</span>' :
-                        '<span class="status-badge status-ended">종료</span>';
+    const status     = getStatus(item.startDate, item.endDate);
+    const allowedGrp = item.allowedGroups || item.groups || [];
+    const userGroups = currentUser.groups && currentUser.groups.length ? currentUser.groups : [currentUser.group];
+    const isAllowed  = !allowedGrp.length || userGroups.some(g => allowedGrp.includes(g));
+
+    const statusLabel =
+      status === 'active'   ? '<span class="status-badge status-active">진행중</span>'  :
+      status === 'soon'     ? '<span class="status-badge status-soon">5분 전</span>'    :
+      status === 'upcoming' ? '<span class="status-badge status-upcoming">예정</span>'  :
+                              '<span class="status-badge status-ended">종료</span>';
 
     let btnClass = 'apply-btn disabled';
-    let btnClick = `onclick="showAlert('⚠️', '신청 기간이 아닙니다', '신청 기간: ${item.startDate} ~ ${item.endDate}')"`;
-    
-    if ((status === 'active' || status === 'soon') && isAllowed) {
-      btnClass = status === 'soon' ? 'apply-btn soon' : 'apply-btn';
-      btnClick = `onclick="goApply(${item.id})"`;
-    } else if (!isAllowed && (status === 'active' || status === 'soon')) {
-      btnClick = `onclick="showAlert('🚫', '신청 권한이 없습니다', '이 신청은 ${item.allowedGroups?.join(', ')} 대상입니다')"`;
+    let btnText  = '신청';
+    let btnClick = `onclick="showAlert('⚠️','신청 기간이 아닙니다','신청 기간: ${item.startDate} ~ ${item.endDate}')"`;
+
+    if (status === 'active' && isAllowed) {
+      // 신청 시작 시각 이후 → 실제 신청 가능
+      btnClass = 'apply-btn';
+      btnClick = `onclick="goApply('${item.id}')"`;
+    } else if (status === 'soon' && isAllowed) {
+      // 5분 전 입장은 가능하지만 신청 버튼은 비활성
+      btnClass = 'apply-btn soon';
+      btnText  = '대기중';
+      btnClick = `onclick="showAlert('⏳','신청 시작 전입니다','${item.startDate} 부터 신청 가능합니다')"`;
+    } else if (status === 'active' && !isAllowed) {
       btnClass = 'apply-btn disabled';
+      btnClick = `onclick="showAlert('🚫','신청 권한이 없습니다','이 신청은 ${allowedGrp.join(', ')} 대상입니다')"`;
+    } else if (status === 'soon' && !isAllowed) {
+      btnClass = 'apply-btn disabled';
+      btnText  = '대기중';
+      btnClick = `onclick="showAlert('🚫','신청 권한이 없습니다','이 신청은 ${allowedGrp.join(', ')} 대상입니다')"`;
     }
 
     return `<tr>
-      <td>${idx+1}</td>
+      <td>${idx + 1}</td>
       <td class="title">${item.title}${statusLabel}</td>
       <td class="period">${item.startDate} ~ ${item.endDate}</td>
-      <td><button class="${btnClass}" ${btnClick}>신청</button></td>
+      <td><button class="${btnClass}" ${btnClick}>${btnText}</button></td>
     </tr>`;
   }).join('');
 }
@@ -463,17 +566,24 @@ function goApply(id) {
   window.location.href = `apply-detail.html?id=${id}`;
 }
 
+/* ============================================================
+   알럿 모달
+============================================================ */
 function showAlert(icon, msg, sub) {
-  document.getElementById('alertIcon').textContent = icon || '⚠️';
-  document.getElementById('alertMsg').textContent = msg;
-  document.getElementById('alertSub').textContent = sub || '';
+  document.getElementById('alertIcon').textContent = icon;
+  document.getElementById('alertMsg').textContent  = msg;
+  document.getElementById('alertSub').textContent  = sub || '';
   document.getElementById('alertModal').classList.add('active');
 }
 function closeAlert() { document.getElementById('alertModal').classList.remove('active'); }
-document.getElementById('alertModal').addEventListener('click', function(e) { if(e.target===this) closeAlert(); });
+document.getElementById('alertModal').addEventListener('click', function(e) {
+  if (e.target === this) closeAlert();
+});
+document.getElementById('loginPw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
-document.getElementById('loginPw').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
-
+/* ============================================================
+   실행
+============================================================ */
 init();
 </script>
 </body>
