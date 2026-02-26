@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>곱셈공식 암기 훈련</title>
+
+<!-- MathJax -->
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<style>
+body{
+    font-family: 'Pretendard', sans-serif;
+    text-align:center;
+    background:#f4f6f9;
+    margin:0;
+    padding:20px;
+}
+h1{margin-bottom:10px;}
+button{
+    padding:10px 15px;
+    margin:5px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:16px;
+}
+.primary{background:#4a90e2;color:white;}
+.card{
+    background:white;
+    padding:15px;
+    margin:10px auto;
+    border-radius:12px;
+    max-width:600px;
+    box-shadow:0 3px 8px rgba(0,0,0,0.1);
+}
+.match-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    max-width:800px;
+    margin:20px auto;
+}
+.option{
+    background:white;
+    padding:10px;
+    border-radius:10px;
+    cursor:pointer;
+    box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+.option.selected{background:#d0e7ff;}
+.option.correct{background:#b8f5c1;}
+.option.wrong{background:#ffb8b8;}
+</style>
+</head>
+<body>
+
+<h1>📚 곱셈공식 암기 훈련</h1>
+
+<button class="primary" onclick="startFill()">식 전체 맞추기</button>
+<button class="primary" onclick="startMatch()">짝 맞추기</button>
+
+<div id="game"></div>
+
+<script>
+
+const formulas = [
+{
+left:"(a+b)^3",
+right:"a^3+3a^2b+3ab^2+b^3"
+},
+{
+left:"(a-b)^3",
+right:"a^3-3a^2b+3ab^2-b^3"
+},
+{
+left:"a^3+b^3",
+right:"(a+b)^3-3ab(a+b)"
+},
+{
+left:"a^3-b^3",
+right:"(a-b)^3+3ab(a-b)"
+},
+{
+left:"(a+b+c)^2",
+right:"a^2+b^2+c^2+2ab+2bc+2ca"
+}
+];
+
+function shuffle(arr){
+return arr.sort(()=>Math.random()-0.5);
+}
+
+function startFill(){
+const game=document.getElementById("game");
+game.innerHTML="";
+let q=formulas[Math.floor(Math.random()*formulas.length)];
+
+game.innerHTML=`
+<div class="card">
+<p>\\(${q.left}\\) = ?</p>
+<input id="answer" style="width:80%;padding:8px;">
+<br><br>
+<button class="primary" onclick="checkFill('${q.right}')">확인</button>
+<p id="result"></p>
+</div>
+`;
+MathJax.typeset();
+}
+
+function checkFill(correct){
+let user=document.getElementById("answer").value.replace(/\s/g,"");
+let ans=correct.replace(/\s/g,"");
+let result=document.getElementById("result");
+if(user===ans){
+result.innerHTML="✅ 정답!";
+result.style.color="green";
+}else{
+result.innerHTML="❌ 오답! 정답: \\("+correct+"\\)";
+result.style.color="red";
+MathJax.typeset();
+}
+}
+
+let first=null;
+let second=null;
+
+function startMatch(){
+const game=document.getElementById("game");
+game.innerHTML="";
+first=null;
+second=null;
+
+let lefts=formulas.map(f=>f.left);
+let rights=formulas.map(f=>f.right);
+
+let mixed=shuffle([...lefts,...rights]);
+
+game.innerHTML='<div class="match-grid" id="grid"></div>';
+
+let grid=document.getElementById("grid");
+
+mixed.forEach(item=>{
+let div=document.createElement("div");
+div.className="option";
+div.innerHTML="\\("+item+"\\)";
+div.onclick=()=>selectOption(div,item);
+grid.appendChild(div);
+});
+MathJax.typeset();
+}
+
+function selectOption(div,value){
+if(div.classList.contains("correct")) return;
+
+div.classList.add("selected");
+
+if(!first){
+first={div,value};
+}else{
+second={div,value};
+
+let correctPair=formulas.find(f=>
+(f.left===first.value && f.right===second.value) ||
+(f.right===first.value && f.left===second.value)
+);
+
+if(correctPair){
+first.div.classList.add("correct");
+second.div.classList.add("correct");
+}else{
+first.div.classList.add("wrong");
+second.div.classList.add("wrong");
+setTimeout(()=>{
+first.div.classList.remove("wrong","selected");
+second.div.classList.remove("wrong","selected");
+},800);
+}
+first=null;
+second=null;
+}
+}
+
+</script>
+</body>
+</html>
