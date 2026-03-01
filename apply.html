@@ -542,8 +542,8 @@ function renderApplyTable(items) {
     } else if (status === 'soon' && isAllowed) {
       // 5분 전 입장은 가능하지만 신청 버튼은 비활성
       btnClass = 'apply-btn soon';
-      btnText  = '대기중';
-      btnClick = `onclick="showAlert('⏳','신청 시작 전입니다','${item.startDate} 부터 신청 가능합니다')"`;
+      btnText  = '입장';
+      btnClick = `onclick="goApply('${item.id}')"`;
     } else if (status === 'active' && !isAllowed) {
       btnClass = 'apply-btn disabled';
       btnClick = `onclick="showAlert('🚫','신청 권한이 없습니다','이 신청은 ${allowedGrp.join(', ')} 대상입니다')"`;
