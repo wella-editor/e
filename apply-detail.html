@@ -95,11 +95,14 @@
     background: var(--primary); color: white; border: none;
     border-radius: 6px; padding: 7px 14px; font-size: 13px;
     font-weight: 600; cursor: pointer; font-family: 'Noto Sans KR', sans-serif;
-    transition: all 0.15s;
+    transition: all 0.15s; min-width: 80px; width: auto;
+    white-space: nowrap; text-align: center; display: inline-block;
+    line-height: 1.4;
   }
   .apply-item-btn:hover { background: var(--primary-dark); }
   .apply-item-btn.full { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
   .apply-item-btn.applied { background: #dcfce7; color: var(--success); cursor: default; border: 1.5px solid #bbf7d0; }
+  .apply-item-btn.waiting { background: #fef3c7; color: #92400e; cursor: not-allowed; border: 1.5px solid #fde68a; }
 
   .empty-state { padding: 60px; text-align: center; color: var(--text-muted); }
   .loading { text-align: center; padding: 40px; color: var(--text-muted); }
@@ -138,6 +141,33 @@
     background: #f3f4f6; color: var(--text); border: none; border-radius: 8px;
     padding: 11px 32px; font-size: 14px; font-weight: 600; cursor: pointer;
     font-family: 'Noto Sans KR', sans-serif;
+  }
+
+  /* ======= PROCESSING OVERLAY ======= */
+  .processing-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(15, 23, 42, 0.55); z-index: 1900;
+    align-items: center; justify-content: center;
+  }
+  .processing-overlay.active { display: flex; }
+  .processing-card {
+    background: white; border-radius: 20px; padding: 44px 48px;
+    display: flex; flex-direction: column; align-items: center; gap: 18px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25); min-width: 260px;
+  }
+  .processing-spinner {
+    width: 52px; height: 52px;
+    border: 4px solid #e5e7eb;
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .processing-text {
+    font-size: 16px; font-weight: 700; color: var(--primary-dark);
+  }
+  .processing-sub {
+    font-size: 13px; color: var(--text-muted); margin-top: -8px;
   }
 
   /* Toast */
@@ -207,6 +237,15 @@
         <tr><td colspan="4"><div class="loading"><div class="spinner"></div>불러오는 중...</div></td></tr>
       </tbody>
     </table>
+  </div>
+</div>
+
+<!-- Processing Overlay (신청 처리 중) -->
+<div class="processing-overlay" id="processingOverlay">
+  <div class="processing-card">
+    <div class="processing-spinner"></div>
+    <div class="processing-text">신청 처리 중...</div>
+    <div class="processing-sub">잠시만 기다려 주세요</div>
   </div>
 </div>
 
@@ -389,6 +428,9 @@ async function init() {
   document.getElementById('applyTitle').textContent  = applyInfo.title;
   document.getElementById('applyPeriod').textContent =
     `신청 기간: ${applyInfo.startDate} ~ ${applyInfo.endDate}`;
+
+  // 5분 전 입장 시 카운트다운 배너 표시
+  startStatusWatcher();
   document.getElementById('applyMeta').innerHTML = `
     <span class="meta-tag">1인 최대 ${applyInfo.maxPerUser}개</span>
     <span class="meta-tag">${applyInfo.allowedGroups.join(', ') || '전체'}</span>
@@ -400,6 +442,8 @@ async function init() {
 
   /* 5초 폴링 (GAS 연결 시에만) */
   if (GAS_READY) setInterval(refreshItems, 5000);
+  /* 1초마다 상태 갱신 (신청 시작 시 버튼 자동 활성화) */
+  setInterval(() => { filterItems(); updateStatusBanner(); }, 1000);
 }
 
 /* ============================================================
@@ -421,12 +465,26 @@ function filterItems() {
 /* ============================================================
    항목 렌더링
 ============================================================ */
+function getApplyStatus() {
+  if (!applyInfo) return 'unknown';
+  const now = new Date();
+  const s   = new Date(applyInfo.startDate);
+  const e   = new Date(applyInfo.endDate);
+  const fiveMinBefore = new Date(s.getTime() - 5 * 60 * 1000);
+  if (now >= s && now <= e)            return 'active';
+  if (now >= fiveMinBefore && now < s) return 'soon';
+  if (now < fiveMinBefore)             return 'upcoming';
+  return 'ended';
+}
+
 function renderItems(items) {
   const body = document.getElementById('itemsBody');
   if (!items || !items.length) {
     body.innerHTML = '<tr><td colspan="4"><div class="empty-state">항목이 없습니다.</div></td></tr>';
     return;
   }
+
+  const applyStatus = getApplyStatus();
 
   body.innerHTML = items.map((item, idx) => {
     const cur       = Number(item.current) || 0;
@@ -439,8 +497,17 @@ function renderItems(items) {
     let btnClass = 'apply-item-btn';
     let btnText  = '신청하기';
     let btnClick = `onclick="doApply('${item.id}')"`;
-    if (isApplied) { btnClass='apply-item-btn applied'; btnText='신청완료'; btnClick=''; }
-    else if (isFull) { btnClass='apply-item-btn full'; btnText='마감'; btnClick=''; }
+
+    if (isApplied) {
+      btnClass = 'apply-item-btn applied'; btnText = '신청완료'; btnClick = '';
+    } else if (isFull) {
+      btnClass = 'apply-item-btn full'; btnText = '마감'; btnClick = '';
+    } else if (applyStatus === 'soon') {
+      // 5분 전 입장: 버튼은 대기 표시, 클릭 불가
+      btnClass = 'apply-item-btn waiting'; btnText = '⏳ 대기중'; btnClick = '';
+    } else if (applyStatus !== 'active') {
+      btnClass = 'apply-item-btn full'; btnText = '신청불가'; btnClick = '';
+    }
 
     return `<tr>
       <td style="text-align:center;color:var(--text-muted)">${idx+1}</td>
@@ -481,21 +548,20 @@ async function doApply(itemId) {
     return;
   }
 
+  // 신청 버튼 누를 때마다 항상 대기열 표시
+  pendingItemId = itemId;
+
   let activeUsers = 0;
   if (GAS_READY) {
     try {
       const d = await gasCall('getActiveUsers', { applyId });
       activeUsers = d.count || 0;
     } catch (e) {}
+  } else {
+    activeUsers = 0; // 데모 모드는 대기없이 바로 처리
   }
 
-  if (activeUsers >= 5) {
-    pendingItemId = itemId;
-    startQueue(activeUsers);
-    return;
-  }
-
-  submitApply(itemId);
+  startQueue(Math.max(activeUsers, 1)); // 최소 1로 대기열 항상 표시
 }
 
 async function submitApply(itemId) {
@@ -554,11 +620,19 @@ function startQueue(userCount) {
         totalInQueue = data.total    ?? totalInQueue;
       } catch (e) { queuePos = Math.max(0, queuePos - 1); }
     } else {
-      queuePos = Math.max(0, queuePos - 1);
+      // 데모 모드: 1초 후 바로 처리
+      clearQueue(); submitApply(pendingItemId); pendingItemId = null; return;
     }
     if (queuePos <= 0) { clearQueue(); submitApply(pendingItemId); pendingItemId = null; return; }
     updateQueueUI();
-  }, 2000);
+  }, 1000);
+}
+
+function showProcessingOverlay() {
+  document.getElementById('processingOverlay').classList.add('active');
+}
+function hideProcessingOverlay() {
+  document.getElementById('processingOverlay').classList.remove('active');
 }
 
 function clearQueue() {
@@ -581,6 +655,47 @@ function updateQueueUI() {
 /* ============================================================
    UI 유틸
 ============================================================ */
+function startStatusWatcher() {
+  updateStatusBanner();
+}
+
+function updateStatusBanner() {
+  const status = getApplyStatus();
+  let banner = document.getElementById('statusBanner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'statusBanner';
+    banner.style.cssText = `
+      position: sticky; top: 60px; z-index: 100; padding: 10px 20px;
+      font-size: 14px; font-weight: 600; text-align: center;
+      display: none;
+    `;
+    document.querySelector('.container')?.prepend(banner);
+  }
+
+  if (status === 'soon') {
+    const s        = new Date(applyInfo.startDate);
+    const diffSec  = Math.max(0, Math.ceil((s - new Date()) / 1000));
+    const min      = Math.floor(diffSec / 60);
+    const sec      = diffSec % 60;
+    const timeStr  = min > 0 ? `${min}분 ${String(sec).padStart(2,'0')}초` : `${sec}초`;
+    banner.style.display   = 'block';
+    banner.style.background = '#dbeafe';
+    banner.style.color      = '#1e40af';
+    banner.style.borderBottom = '2px solid #93c5fd';
+    banner.innerHTML = `⏰ 신청 시작까지 <strong>${timeStr}</strong> 남았습니다. 신청은 시작 시각부터 가능합니다.`;
+  } else if (status === 'active') {
+    banner.style.display   = 'block';
+    banner.style.background = '#dcfce7';
+    banner.style.color      = '#166534';
+    banner.style.borderBottom = '2px solid #86efac';
+    banner.innerHTML = '✅ 신청이 시작되었습니다!';
+    setTimeout(() => { banner.style.display = 'none'; }, 4000);
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
 function showAlert(icon, msg, sub) {
   document.getElementById('alertIcon').textContent = icon;
   document.getElementById('alertMsg').textContent  = msg;
