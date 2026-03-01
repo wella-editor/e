@@ -539,6 +539,7 @@ function showPage(name) {
   if (name === 'applyList')     loadApplyList();
   if (name === 'users')         loadUsers();
   if (name === 'groups')        loadGroups();
+  if (name === 'applyRecords')  populateRecordsSelect();
 }
 
 /* ============================================================
@@ -1227,13 +1228,6 @@ let allRecords    = [];   // 현재 로드된 전체 기록
 let currentTab    = 'all';
 let currentApplyId = '';
 let currentApplyItems = [];  // 해당 신청의 항목 목록
-
-// showPage에 applyRecords 추가
-const _spOrig = showPage;
-function showPage(name) {
-  _spOrig(name);
-  if (name === 'applyRecords') { populateRecordsSelect(); }
-}
 
 // 신청 선택 드롭다운 채우기
 async function populateRecordsSelect() {
