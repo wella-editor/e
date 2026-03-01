@@ -206,6 +206,9 @@
       <button class="sidebar-btn" onclick="showPage('applyList')" id="sb-applyList">
         <span class="sidebar-icon">📝</span> 신청 관리
       </button>
+      <button class="sidebar-btn" onclick="showPage('applyRecords')" id="sb-applyRecords">
+        <span class="sidebar-icon">📋</span> 신청 기록
+      </button>
       <button class="sidebar-btn" onclick="showPage('users')" id="sb-users">
         <span class="sidebar-icon">👥</span> 회원 관리
       </button>
@@ -277,6 +280,51 @@
         <table>
           <thead><tr><th>아이디</th><th>이름</th><th>그룹</th><th>학번</th><th>가입일</th><th style="width:90px">관리</th></tr></thead>
           <tbody id="userTable"><tr><td colspan="6" class="empty-td">불러오는 중...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 신청 기록 페이지 -->
+    <div class="page" id="page-applyRecords">
+      <div class="page-header">
+        <div>
+          <div class="page-title">📋 신청 기록</div>
+          <div class="page-sub" id="recordsSubTitle" style="font-size:13px;color:var(--text-muted)">신청을 선택하면 기록을 볼 수 있습니다.</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline" onclick="downloadRecordsCSV()" id="csvBtn" style="display:none">⬇ CSV</button>
+          <select id="recordsApplySelect" class="form-input" style="width:220px;font-size:13px"
+                  onchange="loadApplyRecords(this.value, this.options[this.selectedIndex].text)">
+            <option value="">— 신청 선택 —</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 항목별 현황 -->
+      <div style="margin-bottom:16px" id="itemSummaryWrap" style="display:none">
+        <div style="font-size:13px;font-weight:700;color:var(--text-muted);margin-bottom:8px">항목별 현황</div>
+        <div id="itemSummary" style="display:flex;flex-wrap:wrap;gap:10px"></div>
+      </div>
+
+      <!-- 탭 -->
+      <div style="display:flex;gap:4px;margin-bottom:12px" id="recordsTabs">
+        <button class="btn btn-sm" id="tabAll" style="background:var(--primary);color:white"
+                onclick="switchRecordTab('all')">전체 기록</button>
+        <button class="btn btn-sm btn-outline" id="tabByItem"
+                onclick="switchRecordTab('byItem')">항목별 보기</button>
+        <button class="btn btn-sm btn-outline" id="tabByUser"
+                onclick="switchRecordTab('byUser')">학생별 보기</button>
+        <input type="text" id="recordSearch" placeholder="이름·항목 검색…"
+               oninput="filterRecords()"
+               style="margin-left:auto;border:1.5px solid var(--border);border-radius:6px;padding:5px 10px;font-size:13px;font-family:inherit;outline:none;width:180px">
+      </div>
+
+      <div class="table-card">
+        <table>
+          <thead id="recordsHead">
+            <tr><th>학생 ID</th><th>이름</th><th>그룹</th><th>신청 항목</th><th>신청 시각</th><th style="width:80px">관리</th></tr>
+          </thead>
+          <tbody id="recordsBody"><tr><td colspan="6" class="empty-td">신청을 선택하세요.</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -456,7 +504,7 @@
 /* ============================================================
    설정 — GAS URL을 여기에 입력하세요
 ============================================================ */
-const GAS_URL   = 'https://script.google.com/macros/s/AKfycbwNBYd4UhL2x8GlhLDkJwqbI_D0JE51InOyfckQ8fZz5gGYNH2HnG9tCTyYxn6SLf51Eg/exec';
+const GAS_URL   = 'https://script.google.com/macros/s/AKfycbz7ee4H9hEf-8Lm-g8utkqMdApOOcwBkyK0gmucsEoGFhLvNm9zeAALpIL8qRgvt--_cg/exec';
 const GAS_READY = true;
 
 // 관리자 인증 확인
@@ -821,6 +869,7 @@ function renderApplyTable(list) {
       <td style="font-size:13px">${a.groups?.join(', ') || '전체'}</td>
       <td>
         <div style="display:flex;gap:6px">
+          <button class="btn btn-sm" style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0" onclick="showPage('applyRecords');loadApplyRecords('${a.id}','${a.title.replace(/'/g,String.fromCharCode(39))}')">기록</button>
           <button class="btn btn-sm btn-outline" onclick="editApply('${a.id}')">수정</button>
           <button class="btn btn-sm btn-danger"  onclick="deleteApply('${a.id}','${a.title.replace(/'/g,"\\'")}')">삭제</button>
         </div>
@@ -1168,7 +1217,237 @@ function openApplyDrawer(ap) {
 if (!GAS_READY) showGasWarning();
 loadGroupDefs().then(() => {
   loadDashboard();
+  populateRecordsSelect();
 });
+
+/* ============================================================
+   신청 기록 (ApplyRecords)
+============================================================ */
+let allRecords    = [];   // 현재 로드된 전체 기록
+let currentTab    = 'all';
+let currentApplyId = '';
+let currentApplyItems = [];  // 해당 신청의 항목 목록
+
+// showPage에 applyRecords 추가
+const _spOrig = showPage;
+function showPage(name) {
+  _spOrig(name);
+  if (name === 'applyRecords') { populateRecordsSelect(); }
+}
+
+// 신청 선택 드롭다운 채우기
+async function populateRecordsSelect() {
+  const sel = document.getElementById('recordsApplySelect');
+  if (!sel) return;
+  // applyCache가 비어있으면 로드
+  if (!applyCache.length && GAS_READY) {
+    try { const r = await gasCall('getApplyList',{}); applyCache = (r.items||[]).map(a=>({...a,groups:parseField(a.groups)||[],items:parseField(a.items)||[]})); } catch(e){}
+  }
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— 신청 선택 —</option>' +
+    applyCache.map(a => `<option value="${a.id}" ${a.id===current?'selected':''}>${a.title}</option>`).join('');
+}
+
+// 기록 로드 (사이드바 또는 "기록" 버튼 클릭 시 호출)
+async function loadApplyRecords(applyId, applyTitle) {
+  if (!applyId) return;
+  currentApplyId = applyId;
+
+  // 선택 드롭다운 동기화
+  const sel = document.getElementById('recordsApplySelect');
+  if (sel) sel.value = applyId;
+
+  document.getElementById('recordsSubTitle').textContent = applyTitle || applyId;
+  document.getElementById('csvBtn').style.display = 'inline-block';
+  document.getElementById('recordsBody').innerHTML =
+    '<tr><td colspan="6" class="empty-td"><div style="display:flex;align-items:center;justify-content:center;gap:8px"><div style="width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite"></div>불러오는 중...</div></td></tr>';
+
+  // 해당 신청의 items 정보 가져오기 (항목명 표시용)
+  const ap = applyCache.find(a => String(a.id) === String(applyId));
+  currentApplyItems = ap ? (ap.items || []) : [];
+
+  if (!GAS_READY) {
+    // 데모 데이터
+    allRecords = [
+      { id:'1', applyId, itemId:'A01', userId:'demo', userName:'홍길동', userGroup:'1학년', timestamp: new Date().toISOString() },
+      { id:'2', applyId, itemId:'A02', userId:'demo2', userName:'김영희', userGroup:'2학년', timestamp: new Date(Date.now()-60000).toISOString() },
+    ];
+    renderRecords(allRecords);
+    renderItemSummary(allRecords);
+    return;
+  }
+
+  try {
+    const data = await gasCall('getApplyRecords', { applyId });
+    allRecords = data.records || [];
+    renderRecords(allRecords);
+    renderItemSummary(allRecords);
+  } catch(e) {
+    document.getElementById('recordsBody').innerHTML =
+      `<tr><td colspan="6" class="empty-td" style="color:#dc2626">오류: ${e.message}</td></tr>`;
+  }
+}
+
+function getItemName(itemId) {
+  const item = currentApplyItems.find(i => String(i.id) === String(itemId));
+  return item ? item.name : String(itemId);
+}
+
+function switchRecordTab(tab) {
+  currentTab = tab;
+  ['all','byItem','byUser'].forEach(t => {
+    document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1)).style.background =
+      t === tab ? 'var(--primary)' : '';
+    document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1)).style.color =
+      t === tab ? 'white' : '';
+    document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1)).className =
+      t === tab ? 'btn btn-sm' : 'btn btn-sm btn-outline';
+  });
+  filterRecords();
+}
+
+function filterRecords() {
+  const kw = (document.getElementById('recordSearch')?.value || '').toLowerCase();
+  let filtered = allRecords.filter(r =>
+    !kw ||
+    String(r.userName || r.userId).toLowerCase().includes(kw) ||
+    getItemName(r.itemId).toLowerCase().includes(kw)
+  );
+  renderRecords(filtered);
+}
+
+function renderRecords(records) {
+  const head = document.getElementById('recordsHead');
+  const body = document.getElementById('recordsBody');
+
+  if (!records.length) {
+    head.innerHTML = '<tr><th>학생 ID</th><th>이름</th><th>그룹</th><th>신청 항목</th><th>신청 시각</th><th style="width:80px">관리</th></tr>';
+    body.innerHTML = '<tr><td colspan="6" class="empty-td">신청 기록이 없습니다.</td></tr>';
+    return;
+  }
+
+  if (currentTab === 'byItem') {
+    // 항목별 그룹핑
+    const byItem = {};
+    records.forEach(r => {
+      const name = getItemName(r.itemId);
+      if (!byItem[name]) byItem[name] = [];
+      byItem[name].push(r);
+    });
+    head.innerHTML = '<tr><th>항목명</th><th>신청자 수</th><th>신청자 목록</th></tr>';
+    body.innerHTML = Object.entries(byItem).map(([name, recs]) => `
+      <tr>
+        <td style="font-weight:600">${name}</td>
+        <td style="text-align:center;font-weight:700;color:var(--primary)">${recs.length}명</td>
+        <td style="font-size:13px">${recs.map(r => `<span style="background:var(--accent);padding:2px 8px;border-radius:12px;margin:2px;display:inline-block">${r.userName||r.userId}</span>`).join('')}</td>
+      </tr>`).join('');
+    return;
+  }
+
+  if (currentTab === 'byUser') {
+    // 학생별 그룹핑
+    const byUser = {};
+    records.forEach(r => {
+      const key = r.userId;
+      if (!byUser[key]) byUser[key] = { userName: r.userName||r.userId, userGroup: r.userGroup||'-', items: [] };
+      byUser[key].items.push(getItemName(r.itemId));
+    });
+    head.innerHTML = '<tr><th>학생 ID</th><th>이름</th><th>그룹</th><th>신청 항목</th><th style="width:80px">관리</th></tr>';
+    body.innerHTML = Object.entries(byUser).map(([uid, info]) => `
+      <tr>
+        <td style="color:var(--text-muted);font-size:13px">${uid}</td>
+        <td style="font-weight:600">${info.userName}</td>
+        <td style="font-size:13px">${info.userGroup}</td>
+        <td style="font-size:13px">${info.items.map(n=>`<span style="background:var(--accent);padding:2px 8px;border-radius:12px;margin:2px;display:inline-block">${n}</span>`).join('')}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="cancelAllUserRecords('${uid}')">전체취소</button></td>
+      </tr>`).join('');
+    return;
+  }
+
+  // 전체 기록 (기본)
+  head.innerHTML = '<tr><th>학생 ID</th><th>이름</th><th>그룹</th><th>신청 항목</th><th>신청 시각</th><th style="width:80px">관리</th></tr>';
+  body.innerHTML = records.map(r => `
+    <tr>
+      <td style="color:var(--text-muted);font-size:13px">${r.userId}</td>
+      <td style="font-weight:500">${r.userName || '-'}</td>
+      <td style="font-size:13px">${r.userGroup || '-'}</td>
+      <td>${getItemName(r.itemId)}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${new Date(r.timestamp).toLocaleString('ko-KR')}</td>
+      <td><button class="btn btn-sm btn-danger" onclick="cancelRecord('${r.id}')">취소</button></td>
+    </tr>`).join('');
+}
+
+function renderItemSummary(records) {
+  const wrap = document.getElementById('itemSummaryWrap');
+  const el   = document.getElementById('itemSummary');
+  if (!currentApplyItems.length) { wrap.style.display='none'; return; }
+  wrap.style.display = 'block';
+  el.innerHTML = currentApplyItems.map(item => {
+    const count = records.filter(r => String(r.itemId) === String(item.id)).length;
+    const max   = Number(item.max) || 0;
+    const pct   = max > 0 ? Math.round(count/max*100) : 0;
+    const color = pct >= 100 ? '#dc2626' : pct >= 80 ? '#d97706' : '#16a34a';
+    return `<div style="background:white;border:1.5px solid var(--border);border-radius:10px;padding:12px 16px;min-width:140px;box-shadow:var(--shadow)">
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px">${item.name}</div>
+      <div style="font-size:22px;font-weight:700;color:${color}">${count}<span style="font-size:13px;color:var(--text-muted);font-weight:400"> / ${max}</span></div>
+      <div style="margin-top:6px;height:4px;background:#e5e7eb;border-radius:4px">
+        <div style="height:100%;width:${Math.min(pct,100)}%;background:${color};border-radius:4px;transition:width 0.5s"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:3px">${pct}% 찼음</div>
+    </div>`;
+  }).join('');
+}
+
+// 개별 기록 취소
+async function cancelRecord(recordId) {
+  showConfirm('🗑️', '신청을 취소하시겠습니까?', '학생의 신청 기록이 삭제됩니다.', async () => {
+    if (!GAS_READY) {
+      allRecords = allRecords.filter(r => String(r.id) !== String(recordId));
+      filterRecords(); renderItemSummary(allRecords);
+      showToast('취소되었습니다. (데모)', 'success'); return;
+    }
+    try {
+      await gasCall('cancelApplyRecord', { recordId, applyId: currentApplyId });
+      await loadApplyRecords(currentApplyId);
+      showToast('취소되었습니다.', 'success');
+    } catch(e) { showToast('오류: ' + e.message, 'error'); }
+  });
+}
+
+// 특정 학생 전체 취소
+async function cancelAllUserRecords(userId) {
+  showConfirm('👤', `${userId}의 모든 신청을 취소하시겠습니까?`, '해당 학생의 모든 신청 기록이 삭제됩니다.', async () => {
+    if (!GAS_READY) {
+      allRecords = allRecords.filter(r => r.userId !== userId);
+      filterRecords(); renderItemSummary(allRecords);
+      showToast('취소되었습니다. (데모)', 'success'); return;
+    }
+    try {
+      await gasCall('cancelUserApplyRecords', { userId, applyId: currentApplyId });
+      await loadApplyRecords(currentApplyId);
+      showToast('취소되었습니다.', 'success');
+    } catch(e) { showToast('오류: ' + e.message, 'error'); }
+  });
+}
+
+// CSV 다운로드
+function downloadRecordsCSV() {
+  if (!allRecords.length) { showToast('다운로드할 기록이 없습니다.', 'error'); return; }
+  const ap = applyCache.find(a => String(a.id) === String(currentApplyId));
+  const header = ['학생ID','이름','그룹','신청항목','신청시각'];
+  const rows = allRecords.map(r => [
+    r.userId, r.userName||'', r.userGroup||'',
+    getItemName(r.itemId),
+    new Date(r.timestamp).toLocaleString('ko-KR')
+  ]);
+  const csv = [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('
+');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `신청기록_${ap?.title||currentApplyId}.csv`; a.click();
+  URL.revokeObjectURL(url);
+}
 </script>
 </body>
 </html>
